@@ -216,8 +216,28 @@ body::before{
 }
 .rank-badge.r1{background:rgba(201,168,76,0.25);color:var(--gold);}
 
+/* Winner picker */
+.winner-bar{
+  padding:8px 18px 6px;flex-shrink:0;
+  border-top:1px solid var(--border2);
+}
+.winner-bar-label{
+  font-size:10px;letter-spacing:3px;text-transform:uppercase;
+  color:var(--cream2);font-family:'Helvetica Neue',Arial,sans-serif;
+  margin-bottom:7px;
+}
+.winner-chips{display:flex;flex-wrap:wrap;gap:7px;}
+.wchip{
+  padding:7px 14px;border-radius:20px;cursor:pointer;border:1px solid var(--border2);
+  background:rgba(255,255,255,0.04);font-size:14px;color:var(--cream2);
+  font-family:Georgia,serif;transition:all .15s;white-space:nowrap;
+}
+.wchip:active{transform:scale(0.95);}
+.wchip.selected{background:rgba(201,168,76,0.2);border-color:var(--gold);color:var(--gold);}
+.wchip.selected::before{content:'★ ';}
+
 /* Footer */
-.game-footer{padding:10px 18px 14px;display:flex;gap:10px;flex-shrink:0;}
+.game-footer{padding:8px 18px 14px;display:flex;gap:10px;flex-shrink:0;}
 .back-btn{width:54px;height:54px;flex-shrink:0;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:12px;color:var(--gold);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;}
 .back-btn:active:not(:disabled){background:rgba(255,255,255,0.09);}
 .back-btn:disabled{opacity:0.2;cursor:not-allowed;}
@@ -304,6 +324,10 @@ body::before{
   <div class="matrix-wrap" id="matrix-wrap">
     <table class="matrix" id="matrix"></table>
   </div>
+  <div class="winner-bar" id="winner-bar">
+    <div class="winner-bar-label">Who won this round?</div>
+    <div class="winner-chips" id="winner-chips"></div>
+  </div>
   <div class="game-footer">
     <button class="back-btn" id="back-btn" onclick="goBack()" disabled>←</button>
     <button class="next-btn" id="next-btn" onclick="goNext()" disabled>Next Round →</button>
@@ -359,6 +383,7 @@ let S = {
   round: 0,         // current round (0-12)
   editing: null,    // null or round index being edited
   dealerStart: 0,   // which player index deals round 0
+  winners: [],      // [roundIdx] = playerIdx who won (went out first), or null
 };
 
 // ── Persist ──
@@ -371,12 +396,9 @@ function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.re
 function totalUpTo(pi,ri){let t=0;for(let r=0;r<ri;r++)t+=(S.scores[pi]?.[r]??0);return t;}
 function fullTotal(pi){return(S.scores[pi]||[]).reduce((s,v)=>s+(v??0),0);}
 function dealerFor(ri){return S.players[(S.dealerStart+ri)%S.players.length];}
-function roundWinners(ri){
-  // Returns set of player indices who won (lowest score) this completed round
-  const sc=S.players.map((_,i)=>S.scores[i]?.[ri]);
-  if(sc.some(v=>v===null||v===undefined))return new Set();
-  const mn=Math.min(...sc);
-  return new Set(sc.map((v,i)=>v===mn?i:-1).filter(i=>i>=0));
+function roundWinner(ri){
+  // Returns the explicit player index who won this round, or null
+  return S.winners[ri]??null;
 }
 
 // ── SETUP ──
@@ -431,6 +453,7 @@ function removePlayer(i){
 function startGame(){
   S.players=S.players.map(p=>p.trim());
   S.scores=S.players.map(()=>new Array(13).fill(null));
+  S.winners=new Array(13).fill(null);
   S.round=0;S.editing=null;
   save();show('game');renderGame();
 }
@@ -551,8 +574,7 @@ function buildMatrix(ri){
       }else if(r<S.round){
         // Completed round
         const sc=S.scores[pi]?.[r]??0;
-        const winners=roundWinners(r);
-        const won=winners.has(pi);
+        const won=roundWinner(r)===pi;
         td.className='col-rnd'+(won?' sc-won':'');
         td.textContent=sc;
       }else{
@@ -575,6 +597,26 @@ function buildMatrix(ri){
   tbl.appendChild(tbody);
   // Update totals with any existing input values
   updateTotals(ri);
+  renderWinnerBar(ri);
+}
+
+function renderWinnerBar(ri){
+  const bar=document.getElementById('winner-bar');
+  const chips=document.getElementById('winner-chips');
+  chips.innerHTML='';
+  const selected=S.winners[ri]??null;
+  // Sort by same order as table (player order by total)
+  S.players.forEach((name,pi)=>{
+    const btn=document.createElement('button');
+    btn.className='wchip'+(selected===pi?' selected':'');
+    btn.textContent=name;
+    btn.onclick=()=>{
+      S.winners[ri]=(S.winners[ri]===pi?null:pi); // toggle
+      renderWinnerBar(ri);
+      refreshButtons();
+    };
+    chips.appendChild(btn);
+  });
 }
 
 function onInput(){
@@ -598,7 +640,10 @@ function getInputVal(pi){
   if(!el||el.value==='')return null;
   return Math.max(0,parseInt(el.value)||0);
 }
-function allFilled(){return S.players.every((_,i)=>getInputVal(i)!==null);}
+function allFilled(){
+  const ri=activeRound();
+  return S.players.every((_,i)=>getInputVal(i)!==null) && (S.winners[ri]!==null&&S.winners[ri]!==undefined);
+}
 
 function refreshButtons(){
   const ri=activeRound();
@@ -618,6 +663,7 @@ function goBack(){
 function goNext(){
   const ri=activeRound();
   S.players.forEach((_,i)=>{const v=getInputVal(i);S.scores[i][ri]=v??0;});
+  // winner already stored via renderWinnerBar clicks
   if(S.editing!==null){S.editing=null;save();renderGame();return;}
   if(S.round>=12){save();showEnd();return;}
   S.round++;save();renderGame();
@@ -643,18 +689,19 @@ function closeDialog(){document.getElementById('dialog').classList.remove('open'
 function doNewGame(){
   closeDialog();
   localStorage.removeItem('br_v3');
-  S={players:['',''],scores:[],round:0,editing:null,dealerStart:0};
+  S={players:['',''],scores:[],round:0,editing:null,dealerStart:0,winners:[]};
   show('setup');renderSetup();
 }
 
 // ── INIT ──
 function init(){
   if(load()&&S.players&&S.players.length>=2&&S.scores&&S.scores.length>0){
+    if(!S.winners)S.winners=new Array(13).fill(null); // migrate old saves
     if(S.round>=13){showEnd();}
     else if(S.round>0||(S.scores[0]&&S.scores[0].some(v=>v!==null))){show('game');renderGame();}
     else{show('setup');renderSetup();}
   }else{
-    S={players:['',''],scores:[],round:0,editing:null,dealerStart:0};
+    S={players:['',''],scores:[],round:0,editing:null,dealerStart:0,winners:[]};
     show('setup');renderSetup();
   }
 }
