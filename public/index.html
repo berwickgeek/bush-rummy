@@ -186,6 +186,14 @@ body::before{
   padding-left:12px; /* compensate letter-spacing */
 }
 .room-code-hint{font-size:11px;color:rgba(255,255,255,0.65);margin-top:10px;letter-spacing:2px;}
+.share-btn{
+  margin-top:14px;width:100%;padding:13px;
+  background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.3);
+  border-radius:10px;color:#fff;font-family:var(--caps);
+  font-size:10px;letter-spacing:4px;text-transform:uppercase;
+  cursor:pointer;min-height:44px;transition:background .15s;
+}
+.share-btn:active{background:rgba(255,255,255,0.25);}
 
 .setup-footer{
   padding:4px 20px 20px;
@@ -617,7 +625,8 @@ body::before{
   <div class="room-section" id="room-section">
     <div class="room-section-label">Room Code</div>
     <div class="room-code-text" id="setup-room-code">----</div>
-    <div class="room-code-hint">Share this with other players → they tap "Join Game"</div>
+    <div class="room-code-hint">Tap the button below to invite other players</div>
+    <button class="share-btn" onclick="shareRoom()">⬆ Share Invite Link</button>
   </div>
 
   <!-- Mode tabs + CTA -->
@@ -1283,8 +1292,33 @@ function applyScanScore() {
   closeScanSheet();
 }
 
+// ── Share invite link ────────────────────────────────────────────────────────
+function shareRoom() {
+  if (!ROOM_CODE) return;
+  const url = `${location.origin}/?join=${ROOM_CODE}`;
+  if (navigator.share) {
+    navigator.share({
+      title: 'Bush Rummy',
+      text: `Join my Bush Rummy game — room code ${ROOM_CODE}`,
+      url
+    }).catch(() => {});
+  } else {
+    navigator.clipboard?.writeText(url).then(() => alert('Link copied!')).catch(() => alert(`Link: ${url}`));
+  }
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────────
 function init() {
+  // Check for ?join=CODE in URL — auto-fill join mode
+  const joinCode = new URLSearchParams(location.search).get('join')?.toUpperCase();
+  if (joinCode && /^[A-Z]{4}$/.test(joinCode)) {
+    setMode('join');
+    document.getElementById('join-code').value = joinCode;
+    checkStart();
+    joinRoom(); // auto-join immediately
+    return;
+  }
+
   setMode('solo');
   if (load() && S.players && S.players.length >= 2 && S.scores && S.scores.length > 0) {
     if (!S.winners) S.winners = new Array(13).fill(null);
