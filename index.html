@@ -4,40 +4,58 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Bush Rummy">
 <title>Bush Rummy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Cormorant+SC:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 
 :root{
-  --felt:#f0ebe0;
-  --gold:#8a6820;
-  --gold2:#b8900a;
-  --gold-dim:rgba(138,104,32,0.25);
-  --cream:#1e1a14;
-  --cream2:#7a7060;
-  --red:#c0392b;
-  --surface:rgba(255,255,255,0.88);
-  --border:rgba(138,104,32,0.28);
-  --border2:rgba(0,0,0,0.09);
-  --r:14px;
-  --sticky-bg:#ede8dc;
+  --bg:#f5f1e8;
+  --teal:#1e4a5c;
+  --teal2:#2a6275;
+  --teal-light:rgba(30,74,92,0.08);
+  --gold:#b07e1a;
+  --gold2:#d09a30;
+  --gold-light:rgba(176,126,26,0.12);
+  --ink:#1a1614;
+  --ink2:#6e6454;
+  --surface:#ffffff;
+  --border:rgba(30,74,92,0.16);
+  --border2:rgba(30,74,92,0.08);
+  --sticky:#f0ece2;
+  --r:12px;
+  --display:'Playfair Display',Georgia,serif;
+  --caps:'Cormorant SC','Georgia',serif;
+  --mono:'DM Mono','Courier New',monospace;
 }
 
 html,body{
-  height:100%;background:var(--felt);color:var(--cream);
-  font-family:Georgia,'Times New Roman',serif;overscroll-behavior:none;
+  height:100%;background:var(--bg);color:var(--ink);
+  font-family:var(--caps);overscroll-behavior:none;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
 }
+
+/* Subtle grid ruling — like quality scorecard paper */
 body{
   background-image:
-    radial-gradient(ellipse 80% 60% at 20% 10%,rgba(255,250,235,0.9) 0%,transparent 55%),
-    radial-gradient(ellipse 70% 50% at 80% 90%,rgba(230,220,195,0.6) 0%,transparent 55%);
+    linear-gradient(rgba(30,74,92,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30,74,92,0.015) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
+
+/* Corner watermark */
 body::before{
-  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Ctext x='10' y='30' font-size='18' fill='rgba(138,104,32,0.06)' font-family='serif'%3E♠%3C/text%3E%3Ctext x='45' y='65' font-size='18' fill='rgba(138,104,32,0.06)' font-family='serif'%3E♥%3C/text%3E%3C/svg%3E");
+  content:'♠ ♥ ♦ ♣';
+  position:fixed;bottom:24px;right:24px;
+  font-size:12px;letter-spacing:5px;
+  color:rgba(30,74,92,0.1);
+  pointer-events:none;z-index:0;font-family:serif;
 }
+
 #app{
   position:relative;z-index:1;height:100%;
   display:flex;flex-direction:column;
@@ -47,282 +65,508 @@ body::before{
 .screen{display:none;flex-direction:column;height:100%;overflow-x:hidden;-webkit-overflow-scrolling:touch;}
 .screen.active{display:flex;}
 
-/* ── SETUP ── */
-.setup-header{text-align:center;padding:clamp(28px,8vw,52px) 24px 20px;}
-.game-title{font-size:clamp(36px,10vw,52px);font-weight:normal;letter-spacing:4px;color:var(--gold);text-shadow:0 0 40px rgba(201,168,76,0.5),0 2px 0 rgba(0,0,0,0.5);line-height:1;}
-.game-tagline{font-size:11px;letter-spacing:7px;text-transform:uppercase;color:var(--cream2);margin-top:10px;font-family:'Helvetica Neue',Arial,sans-serif;}
-.suits-row{display:flex;align-items:center;justify-content:center;gap:8px;margin:18px 24px;color:var(--gold);font-size:18px;opacity:0.4;}
-.suits-row::before,.suits-row::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,76,0.4));}
-.suits-row::after{background:linear-gradient(90deg,rgba(201,168,76,0.4),transparent);}
-.setup-body{padding:0 20px;flex:1;overflow-y:auto;}
-.sect-label{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--gold);font-family:'Helvetica Neue',Arial,sans-serif;margin-bottom:14px;}
-.player-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;animation:fadeSlide .25s ease both;}
-@keyframes fadeSlide{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
-.player-badge{width:30px;height:30px;border-radius:50%;flex-shrink:0;background:rgba(201,168,76,0.1);border:1px solid var(--gold-dim);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--gold);font-family:'Helvetica Neue',Arial,sans-serif;}
-.player-input{flex:1;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:12px;padding:15px 16px;font-size:18px;color:var(--cream);font-family:Georgia,serif;outline:none;transition:border-color .2s,background .2s;-webkit-appearance:none;}
-.player-input:focus{border-color:var(--gold);background:#fff;}
-.player-input::placeholder{color:rgba(242,232,200,0.2);font-style:italic;}
-.remove-btn{width:38px;height:38px;border-radius:50%;flex-shrink:0;background:rgba(192,57,43,0.12);border:1px solid rgba(192,57,43,0.25);color:rgba(192,57,43,0.6);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;transition:all .15s;}
-.remove-btn:active{background:rgba(192,57,43,0.25);}
-.add-btn{width:100%;padding:14px;margin-top:4px;background:transparent;border:1px dashed rgba(201,168,76,0.25);border-radius:12px;color:var(--gold);font-size:13px;letter-spacing:3px;text-transform:uppercase;font-family:'Helvetica Neue',Arial,sans-serif;cursor:pointer;transition:all .2s;}
-.add-btn:active{background:rgba(201,168,76,0.07);}
-
-/* First dealer picker */
-.dealer-pick{margin-top:20px;margin-bottom:4px;}
-.dealer-options{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
-.dealer-opt{
-  padding:8px 16px;border-radius:20px;cursor:pointer;
-  background:rgba(255,255,255,0.7);border:1px solid var(--border2);
-  font-size:14px;color:var(--cream2);font-family:Georgia,serif;
-  transition:all .15s;
+/* ══════════════════════════════════════
+   SETUP SCREEN
+══════════════════════════════════════ */
+.setup-header{
+  text-align:center;
+  padding:clamp(36px,9vw,60px) 28px 20px;
 }
-.dealer-opt.selected{background:rgba(201,168,76,0.15);border-color:var(--gold);color:var(--gold);}
 
-.setup-footer{padding:20px;flex-shrink:0;}
-.cta-btn{width:100%;padding:18px;background:linear-gradient(135deg,#c9a84c,#a87830);border:none;border-radius:14px;color:#080f08;font-size:18px;font-family:Georgia,serif;letter-spacing:3px;text-transform:uppercase;font-weight:bold;cursor:pointer;box-shadow:0 4px 24px rgba(201,168,76,0.35),0 1px 0 rgba(255,255,255,0.15) inset;transition:transform .15s,box-shadow .15s;-webkit-appearance:none;}
-.cta-btn:active:not(:disabled){transform:scale(0.98);box-shadow:0 2px 12px rgba(201,168,76,0.2);}
+.header-rule{
+  display:flex;align-items:center;gap:12px;
+  justify-content:center;margin-bottom:18px;
+}
+.header-rule span{display:block;height:1.5px;width:40px;background:var(--gold);}
+.header-rule em{font-style:normal;font-size:14px;color:var(--gold);letter-spacing:3px;font-family:serif;}
+
+.game-title{
+  font-family:var(--display);
+  font-size:clamp(42px,11vw,62px);
+  font-weight:700;
+  letter-spacing:2px;
+  color:var(--teal);
+  line-height:1;
+}
+.game-title-em{
+  font-style:italic;
+  font-weight:400;
+  color:var(--gold);
+}
+
+.game-tagline{
+  font-family:var(--caps);
+  font-size:10px;letter-spacing:8px;text-transform:uppercase;
+  color:var(--ink2);margin-top:12px;
+}
+
+.footer-rule{
+  display:flex;align-items:center;gap:0;
+  justify-content:center;margin-top:20px;
+  color:var(--teal);opacity:0.3;
+  font-size:14px;letter-spacing:8px;font-family:serif;
+}
+
+.setup-body{padding:0 22px;flex:1;overflow-y:auto;}
+
+.sect-label{
+  font-family:var(--caps);
+  font-size:10px;letter-spacing:5px;text-transform:uppercase;
+  color:var(--teal);margin-bottom:14px;
+  display:flex;align-items:center;gap:12px;
+}
+.sect-label::after{content:'';flex:1;height:1px;background:var(--border);}
+
+.player-row{
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:10px;
+  animation:fadeUp .22s ease both;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+.player-badge{
+  width:32px;height:32px;border-radius:50%;flex-shrink:0;
+  background:var(--teal);color:#fff;
+  font-family:var(--display);font-size:13px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 6px rgba(30,74,92,0.3);
+}
+
+.player-input{
+  flex:1;
+  background:var(--surface);
+  border:1.5px solid var(--border);
+  border-radius:10px;
+  padding:14px 16px;
+  font-size:17px;color:var(--ink);
+  font-family:var(--caps);
+  outline:none;
+  transition:border-color .2s,box-shadow .2s;
+  -webkit-appearance:none;
+  box-shadow:0 1px 4px rgba(0,0,0,0.06);
+}
+.player-input:focus{
+  border-color:var(--teal);
+  box-shadow:0 0 0 3px rgba(30,74,92,0.1),0 1px 4px rgba(0,0,0,0.06);
+}
+.player-input::placeholder{color:rgba(26,22,20,0.25);font-style:italic;}
+
+.remove-btn{
+  width:38px;height:38px;border-radius:50%;flex-shrink:0;
+  background:transparent;border:1.5px solid rgba(160,40,40,0.18);
+  color:rgba(160,40,40,0.45);font-size:20px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .15s;
+}
+.remove-btn:active{background:rgba(160,40,40,0.07);border-color:rgba(160,40,40,0.35);}
+
+.add-btn{
+  width:100%;padding:13px;margin-top:4px;
+  background:transparent;border:1.5px dashed var(--border);
+  border-radius:10px;color:var(--teal);
+  font-size:11px;letter-spacing:4px;text-transform:uppercase;
+  font-family:var(--caps);cursor:pointer;transition:all .2s;
+}
+.add-btn:active{background:var(--teal-light);}
+
+.dealer-pick{margin-top:24px;margin-bottom:4px;}
+.dealer-options{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.dealer-opt{
+  padding:8px 18px;border-radius:24px;cursor:pointer;
+  background:var(--surface);border:1.5px solid var(--border);
+  font-size:14px;color:var(--ink2);font-family:var(--caps);
+  transition:all .15s;
+  box-shadow:0 1px 3px rgba(0,0,0,0.05);
+}
+.dealer-opt:active{transform:scale(0.97);}
+.dealer-opt.selected{
+  background:var(--teal);border-color:var(--teal);color:#fff;
+  box-shadow:0 2px 8px rgba(30,74,92,0.3);
+}
+
+.setup-footer{padding:18px 22px;}
+
+.cta-btn{
+  width:100%;padding:17px;
+  background:var(--teal);border:none;border-radius:12px;
+  color:#fff;font-family:var(--caps);font-size:12px;letter-spacing:7px;text-transform:uppercase;font-weight:600;
+  cursor:pointer;
+  box-shadow:0 4px 18px rgba(30,74,92,0.38);
+  transition:transform .15s,box-shadow .15s;-webkit-appearance:none;
+}
+.cta-btn:active:not(:disabled){transform:scale(0.98);box-shadow:0 2px 8px rgba(30,74,92,0.22);}
 .cta-btn:disabled{opacity:0.3;cursor:not-allowed;box-shadow:none;}
 
-/* ── GAME ── */
-.game-header{padding:12px 18px 0;flex-shrink:0;}
-.top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-.round-label{font-size:12px;letter-spacing:3px;color:var(--cream2);font-family:'Helvetica Neue',Arial,sans-serif;}
-.ghost-btn{background:transparent;border:1px solid var(--border);border-radius:8px;padding:6px 13px;color:var(--gold);font-size:11px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;font-family:'Helvetica Neue',Arial,sans-serif;}
-.ghost-btn:active{background:rgba(201,168,76,0.1);}
+/* ══════════════════════════════════════
+   GAME SCREEN
+══════════════════════════════════════ */
+.game-header{padding:12px 20px 0;flex-shrink:0;}
 
-/* Pips */
-.pips{display:flex;gap:4px;justify-content:center;margin-bottom:10px;flex-wrap:wrap;}
-.pip{width:7px;height:7px;border-radius:50%;background:rgba(201,168,76,0.18);transition:all .3s;}
-.pip.done{background:rgba(201,168,76,0.45);cursor:pointer;width:9px;height:9px;margin:-1px 0;}
-.pip.done:active{background:var(--gold2);transform:scale(1.5);}
-.pip.now{background:var(--gold);width:9px;height:9px;margin:-1px 0;box-shadow:0 0 8px rgba(201,168,76,0.7);}
+.top-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:8px;
+}
+.round-label{
+  font-family:var(--caps);font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--ink2);
+}
+.ghost-btn{
+  background:transparent;border:1.5px solid var(--border);border-radius:8px;
+  padding:6px 14px;color:var(--teal);
+  font-size:10px;letter-spacing:3px;text-transform:uppercase;
+  font-family:var(--caps);cursor:pointer;transition:background .15s;
+}
+.ghost-btn:active{background:var(--teal-light);}
+
+/* Progress pips */
+.pips{display:flex;gap:4px;justify-content:center;align-items:center;margin-bottom:10px;}
+.pip{
+  height:5px;width:5px;border-radius:3px;
+  background:rgba(30,74,92,0.15);transition:all .25s;flex-shrink:0;
+}
+.pip.done{
+  background:rgba(30,74,92,0.35);cursor:pointer;
+  width:8px;
+}
+.pip.done:active{background:var(--teal);transform:scaleY(1.5);}
+.pip.now{
+  background:var(--teal);
+  width:22px;border-radius:3px;
+  box-shadow:0 0 5px rgba(30,74,92,0.4);
+}
 
 /* Round info card */
-.info-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;gap:14px;margin-bottom:8px;position:relative;overflow:hidden;flex-shrink:0;}
-.info-card::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,76,0.5),transparent);}
-.wild-card{width:46px;height:64px;border-radius:6px;background:linear-gradient(160deg,#ffffff,#f5edd8);display:flex;flex-direction:column;justify-content:space-between;padding:4px;flex-shrink:0;box-shadow:2px 3px 10px rgba(0,0,0,0.2),0 1px 3px rgba(0,0,0,0.1),inset 0 1px 0 rgba(255,255,255,1);position:relative;border:1px solid rgba(0,0,0,0.1);}
-.wild-card::before{content:'';position:absolute;inset:3px;border:1px solid rgba(0,0,0,0.08);border-radius:3px;pointer-events:none;}
-.card-rk{font-size:15px;font-weight:bold;font-family:Georgia,serif;line-height:1;}
+.info-card{
+  background:var(--surface);
+  border-left:4px solid var(--teal);
+  border-top:1px solid var(--border);
+  border-right:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+  border-radius:var(--r);
+  padding:12px 16px;
+  display:flex;align-items:center;gap:14px;
+  margin-bottom:8px;
+  box-shadow:0 2px 10px rgba(0,0,0,0.06);
+  flex-shrink:0;
+}
+
+/* Playing card */
+.wild-card{
+  width:48px;height:68px;border-radius:7px;
+  background:#fff;
+  display:flex;flex-direction:column;justify-content:space-between;
+  padding:4px 5px;flex-shrink:0;
+  box-shadow:0 2px 8px rgba(0,0,0,0.14),0 1px 2px rgba(0,0,0,0.1);
+  border:1px solid rgba(0,0,0,0.1);
+  position:relative;
+}
+.wild-card::after{
+  content:'';position:absolute;inset:3px;
+  border:0.5px solid rgba(0,0,0,0.07);border-radius:5px;pointer-events:none;
+}
+.card-rk{font-family:var(--display);font-size:14px;font-weight:700;line-height:1;}
 .card-rk.flip{transform:rotate(180deg);align-self:flex-end;}
-.card-suit-center{font-size:18px;line-height:1;text-align:center;}
-.card-red{color:#c0392b;}.card-black{color:#1c1c1c;}
+.card-suit-center{font-size:22px;line-height:1;text-align:center;align-self:center;}
+.card-red{color:#c0392b;}
+.card-black{color:#1a1a1a;}
+
 .round-info{flex:1;min-width:0;}
-.round-title{font-size:17px;color:var(--gold);line-height:1.2;}
-.round-meta{font-size:12px;color:var(--cream2);margin-top:2px;font-family:'Helvetica Neue',Arial,sans-serif;}
-.wild-pill{display:inline-block;margin-top:5px;background:rgba(201,168,76,0.12);border:1px solid var(--gold-dim);border-radius:20px;padding:2px 9px;font-size:11px;color:var(--cream);font-family:'Helvetica Neue',Arial,sans-serif;}
-.dealer-pill{display:inline-block;margin-top:4px;margin-left:6px;background:rgba(0,0,0,0.04);border:1px solid var(--border2);border-radius:20px;padding:2px 9px;font-size:11px;color:var(--cream2);font-family:'Helvetica Neue',Arial,sans-serif;}
+.round-title{
+  font-family:var(--display);font-size:18px;font-weight:600;
+  color:var(--teal);line-height:1.2;
+}
+.round-meta{
+  font-family:var(--caps);font-size:11px;color:var(--ink2);
+  margin-top:3px;letter-spacing:.5px;
+}
+.round-pills{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;}
+.wild-pill{
+  display:inline-block;
+  background:var(--gold-light);border:1px solid rgba(176,126,26,0.25);
+  border-radius:20px;padding:2px 9px;
+  font-family:var(--caps);font-size:11px;color:var(--gold);letter-spacing:.5px;
+}
+.dealer-pill{
+  display:inline-block;
+  background:var(--teal-light);border:1px solid var(--border);
+  border-radius:20px;padding:2px 9px;
+  font-family:var(--caps);font-size:11px;color:var(--teal);letter-spacing:.5px;
+}
 
 /* Edit banner */
-.edit-banner{margin:0 18px 6px;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:6px 14px;text-align:center;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);font-family:'Helvetica Neue',Arial,sans-serif;display:none;flex-shrink:0;}
+.edit-banner{
+  margin:0 20px 6px;
+  background:var(--gold-light);border:1px solid rgba(176,126,26,0.28);
+  border-radius:8px;padding:6px 14px;text-align:center;
+  font-family:var(--caps);font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--gold);
+  display:none;flex-shrink:0;
+}
 .edit-banner.show{display:block;}
 
 /* ── SCORE MATRIX ── */
-.matrix-wrap{
-  flex:1;overflow:auto;-webkit-overflow-scrolling:touch;
-  /* No horizontal margin — table uses cell padding instead */
-}
-.matrix{
-  border-collapse:collapse;
-  font-family:'Helvetica Neue',Arial,sans-serif;
-  width:100%;
-  min-width:max-content;
-}
+.matrix-wrap{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;}
+
+.matrix{border-collapse:collapse;width:100%;min-width:max-content;}
+
+/* THEAD — teal header bar */
 .matrix thead th{
   position:sticky;top:0;z-index:3;
-  background:var(--sticky-bg);
-  border-bottom:1px solid var(--border);
-  padding:8px 6px;
-  text-align:center;
-  font-size:10px;letter-spacing:1px;
-  color:var(--cream2);
+  background:var(--teal);
+  color:rgba(255,255,255,0.7);
+  padding:9px 6px;text-align:center;
+  font-family:var(--caps);font-size:9px;letter-spacing:2px;
   white-space:nowrap;
+  border-right:1px solid rgba(255,255,255,0.07);
 }
+.matrix thead th:last-child{border-right:none;}
+
 .matrix thead th.col-name{
   position:sticky;left:0;top:0;z-index:4;
-  text-align:left;
-  padding-left:18px;padding-right:12px;
-  letter-spacing:3px;color:var(--gold);
-  min-width:90px;
+  text-align:left;padding-left:20px;padding-right:14px;
+  font-size:9px;letter-spacing:4px;color:rgba(255,255,255,0.55);
+  min-width:100px;border-right:1px solid rgba(255,255,255,0.12);
 }
 .matrix thead th.col-total{
   position:sticky;right:0;top:0;z-index:4;
-  text-align:right;
-  padding-right:18px;padding-left:8px;
-  letter-spacing:2px;color:var(--gold);
-  min-width:52px;
+  text-align:right;padding-right:20px;padding-left:10px;
+  min-width:58px;color:rgba(255,255,255,0.9);
+  border-left:1px solid rgba(255,255,255,0.12);border-right:none;
 }
-.matrix thead th.col-rnd{
-  min-width:38px;cursor:pointer;
-  transition:color .15s;
+.matrix thead th.col-rnd{min-width:40px;cursor:pointer;transition:background .15s;}
+.matrix thead th.col-rnd:active{background:var(--teal2);}
+.matrix thead th.col-rnd.editing{background:var(--gold2);color:#fff;}
+.matrix thead th.col-rnd.current-col{
+  background:var(--gold);color:#fff;min-width:58px;
 }
-.matrix thead th.col-rnd:active{color:var(--gold);}
-.matrix thead th.col-rnd.editing{color:var(--gold2);}
-.matrix thead th.col-rnd.current-col{color:var(--gold);min-width:56px;}
-.rnd-num{font-size:11px;font-weight:bold;}
-.rnd-dealer{display:block;font-size:9px;color:var(--gold);opacity:0.7;margin-top:1px;letter-spacing:0;}
 
-/* Data rows */
-.matrix tbody tr{border-bottom:1px solid var(--border2);transition:background .15s;}
+.rnd-num{display:block;font-size:10px;font-weight:600;letter-spacing:1px;}
+.rnd-dealer{display:block;font-size:9px;color:rgba(255,255,255,0.5);margin-top:2px;letter-spacing:0;}
+
+/* TBODY */
+.matrix tbody tr{
+  border-bottom:1px solid var(--border2);
+  transition:background .1s;
+}
+.matrix tbody tr:nth-child(even){background:rgba(30,74,92,0.02);}
+.matrix tbody tr.leader{background:rgba(176,126,26,0.07);}
 .matrix tbody tr:last-child{border-bottom:none;}
-.matrix tbody tr.leader{background:rgba(201,168,76,0.05);}
-.matrix tbody td{padding:10px 6px;text-align:center;font-size:14px;}
+
+.matrix tbody td{
+  padding:10px 6px;text-align:center;
+  font-family:var(--mono);font-size:14px;color:var(--ink);
+}
 .matrix tbody td.col-name{
   position:sticky;left:0;z-index:2;
-  background:var(--sticky-bg);
-  text-align:left;
-  padding-left:18px;padding-right:10px;
-  font-family:Georgia,serif;
-  font-size:15px;
-  white-space:nowrap;
-  min-width:90px;
+  background:var(--bg);
+  text-align:left;padding-left:20px;padding-right:12px;
+  font-family:var(--caps);font-size:15px;
+  white-space:nowrap;min-width:100px;
+  border-right:1px solid var(--border2);
 }
-.matrix tbody tr.leader td.col-name{color:var(--gold);}
+.matrix tbody tr.leader td.col-name{background:rgba(176,126,26,0.07);}
+.matrix tbody tr:nth-child(even) td.col-name{background:rgba(30,74,92,0.02);}
+
 .matrix tbody td.col-total{
   position:sticky;right:0;z-index:2;
-  background:var(--sticky-bg);
-  text-align:right;
-  padding-right:18px;padding-left:8px;
-  font-size:17px;color:var(--gold);font-weight:bold;
-  min-width:52px;
+  background:var(--bg);
+  text-align:right;padding-right:20px;padding-left:10px;
+  font-family:var(--display);font-size:18px;font-weight:600;
+  color:var(--teal);min-width:58px;
+  border-left:1px solid var(--border2);
 }
-.matrix tbody tr.leader td.col-total{background:rgba(245,238,220,0.98);}
-/* Score cell states */
-.matrix tbody td.sc-won{color:var(--gold);font-weight:bold;position:relative;}
-.matrix tbody td.sc-won::after{content:'★';display:block;font-size:8px;color:var(--gold);opacity:0.7;line-height:1;margin-top:1px;}
-.matrix tbody td.sc-empty{color:rgba(201,168,76,0.2);}
+.matrix tbody tr.leader td.col-total{color:var(--gold);background:rgba(176,126,26,0.07);}
+.matrix tbody tr:nth-child(even) td.col-total{background:rgba(30,74,92,0.02);}
+
+.matrix tbody td.sc-won{color:var(--gold);font-weight:500;}
+.matrix tbody td.sc-won::after{
+  content:'★';display:block;font-size:8px;color:var(--gold);line-height:1;margin-top:2px;font-family:serif;
+}
+.matrix tbody td.sc-empty{color:rgba(30,74,92,0.18);font-size:10px;}
 .matrix tbody td.sc-current{padding:5px 4px;}
+
 /* Matrix input */
 .mi{
-  width:46px;height:38px;
-  background:rgba(255,255,255,0.9);
-  border:1px solid var(--border);
-  border-radius:7px;
-  color:var(--cream);font-size:19px;
+  width:48px;height:40px;
+  background:#fff;
+  border:1.5px solid var(--teal);border-radius:8px;
+  color:var(--ink);font-family:var(--display);font-size:19px;
   text-align:center;outline:none;
   -webkit-appearance:none;-moz-appearance:textfield;
-  font-family:Georgia,serif;
-  transition:border-color .15s;
+  box-shadow:0 0 0 3px rgba(30,74,92,0.1);
+  transition:border-color .15s,box-shadow .15s;
 }
-.mi:focus{border-color:var(--gold);background:#fff;}
+.mi:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(176,126,26,0.15);}
 .mi::-webkit-outer-spin-button,.mi::-webkit-inner-spin-button{-webkit-appearance:none;}
+
 /* Rank badge */
 .rank-badge{
-  display:inline-block;width:18px;height:18px;
-  border-radius:50%;font-size:10px;line-height:18px;text-align:center;
-  background:rgba(201,168,76,0.15);color:var(--cream2);
-  margin-right:6px;font-family:'Helvetica Neue',Arial,sans-serif;
-  flex-shrink:0;
+  display:inline-flex;align-items:center;justify-content:center;
+  width:20px;height:20px;border-radius:50%;
+  font-family:var(--mono);font-size:10px;
+  background:rgba(30,74,92,0.1);color:var(--ink2);
+  margin-right:7px;vertical-align:middle;flex-shrink:0;
 }
-.rank-badge.r1{background:rgba(201,168,76,0.25);color:var(--gold);}
+.rank-badge.r1{background:var(--gold);color:#fff;}
 
-/* Winner picker */
+/* ── WINNER BAR ── */
 .winner-bar{
-  padding:8px 18px 6px;flex-shrink:0;
+  padding:10px 20px 8px;flex-shrink:0;
+  background:var(--surface);
   border-top:1px solid var(--border2);
+  border-bottom:1px solid var(--border2);
 }
 .winner-bar-label{
-  font-size:10px;letter-spacing:3px;text-transform:uppercase;
-  color:var(--cream2);font-family:'Helvetica Neue',Arial,sans-serif;
-  margin-bottom:7px;
+  font-family:var(--caps);font-size:9px;letter-spacing:5px;text-transform:uppercase;
+  color:var(--ink2);margin-bottom:8px;
 }
 .winner-chips{display:flex;flex-wrap:wrap;gap:7px;}
 .wchip{
-  padding:7px 14px;border-radius:20px;cursor:pointer;border:1px solid var(--border2);
-  background:rgba(255,255,255,0.7);font-size:14px;color:var(--cream2);
-  font-family:Georgia,serif;transition:all .15s;white-space:nowrap;
+  padding:8px 16px;border-radius:24px;cursor:pointer;
+  border:1.5px solid var(--border);background:var(--bg);
+  font-family:var(--caps);font-size:14px;color:var(--ink2);
+  transition:all .15s;white-space:nowrap;
+  box-shadow:0 1px 3px rgba(0,0,0,0.05);
 }
-.wchip:active{transform:scale(0.95);}
-.wchip.selected{background:rgba(201,168,76,0.2);border-color:var(--gold);color:var(--gold);}
+.wchip:active{transform:scale(0.96);}
+.wchip.selected{
+  background:var(--teal);border-color:var(--teal);color:#fff;
+  box-shadow:0 2px 8px rgba(30,74,92,0.3);
+}
 .wchip.selected::before{content:'★ ';}
 
-/* Footer */
-.game-footer{padding:8px 18px 14px;display:flex;gap:10px;flex-shrink:0;}
-.back-btn{width:54px;height:54px;flex-shrink:0;background:rgba(0,0,0,0.04);border:1px solid var(--border);border-radius:12px;color:var(--gold);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;}
-.back-btn:active:not(:disabled){background:rgba(0,0,0,0.09);}
+/* ── FOOTER ── */
+.game-footer{padding:10px 20px 14px;display:flex;gap:10px;flex-shrink:0;}
+.back-btn{
+  width:54px;height:54px;flex-shrink:0;
+  background:var(--surface);border:1.5px solid var(--border);border-radius:12px;
+  color:var(--teal);font-size:20px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 1px 4px rgba(0,0,0,0.08);transition:all .15s;
+}
+.back-btn:active:not(:disabled){background:var(--teal-light);transform:scale(0.97);}
 .back-btn:disabled{opacity:0.2;cursor:not-allowed;}
-.next-btn{flex:1;height:54px;background:linear-gradient(135deg,#c9a84c,#a87830);border:none;border-radius:12px;color:#080f08;font-size:15px;font-family:Georgia,serif;letter-spacing:2px;text-transform:uppercase;font-weight:bold;cursor:pointer;box-shadow:0 4px 16px rgba(201,168,76,0.3);transition:transform .15s,box-shadow .15s,opacity .15s;-webkit-appearance:none;}
-.next-btn:active:not(:disabled){transform:scale(0.98);}
+.next-btn{
+  flex:1;height:54px;background:var(--teal);border:none;border-radius:12px;
+  color:#fff;font-family:var(--caps);font-size:11px;letter-spacing:5px;text-transform:uppercase;font-weight:600;
+  cursor:pointer;box-shadow:0 4px 14px rgba(30,74,92,0.35);
+  transition:transform .15s,box-shadow .15s,opacity .15s;-webkit-appearance:none;
+}
+.next-btn:active:not(:disabled){transform:scale(0.98);box-shadow:0 2px 6px rgba(30,74,92,0.2);}
 .next-btn:disabled{opacity:0.3;cursor:not-allowed;box-shadow:none;}
 
-/* ── END SCREEN ── */
-.end-body{flex:1;display:flex;flex-direction:column;align-items:center;padding:clamp(28px,8vw,48px) 22px 22px;text-align:center;overflow-y:auto;}
-.trophy-icon{font-size:68px;margin-bottom:14px;animation:bob 2.8s ease-in-out infinite;}
-@keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-9px);}}
-.winner-pre{font-size:10px;letter-spacing:6px;text-transform:uppercase;color:var(--cream2);font-family:'Helvetica Neue',Arial,sans-serif;margin-bottom:6px;}
-.winner-nm{font-size:clamp(30px,8vw,42px);color:var(--gold);text-shadow:0 0 30px rgba(201,168,76,0.5);}
-.winner-pts{font-size:14px;color:var(--cream2);margin-top:4px;font-family:'Helvetica Neue',Arial,sans-serif;margin-bottom:28px;}
-.final-table{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:28px;}
-.ft-row{display:flex;align-items:center;padding:13px 16px;gap:12px;border-bottom:1px solid var(--border2);}
+/* ══════════════════════════════════════
+   END SCREEN
+══════════════════════════════════════ */
+.end-body{
+  flex:1;overflow-y:auto;
+  display:flex;flex-direction:column;align-items:center;
+  padding:clamp(32px,8vw,56px) 24px 24px;text-align:center;
+}
+.trophy-icon{font-size:72px;margin-bottom:16px;animation:bob 2.8s ease-in-out infinite;}
+@keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+.winner-pre{
+  font-family:var(--caps);font-size:10px;letter-spacing:7px;text-transform:uppercase;
+  color:var(--ink2);margin-bottom:8px;
+}
+.winner-nm{
+  font-family:var(--display);font-size:clamp(34px,8vw,50px);font-weight:700;
+  color:var(--teal);line-height:1.1;
+}
+.winner-pts{
+  font-family:var(--caps);font-size:14px;color:var(--ink2);
+  margin-top:6px;margin-bottom:32px;letter-spacing:.5px;
+}
+.final-table{
+  width:100%;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);overflow:hidden;margin-bottom:28px;
+  box-shadow:0 2px 12px rgba(0,0,0,0.07);
+}
+.ft-row{display:flex;align-items:center;padding:14px 18px;gap:14px;border-bottom:1px solid var(--border2);}
 .ft-row:last-child{border-bottom:none;}
-.ft-row.win{background:rgba(201,168,76,0.09);}
-.ft-pos{width:28px;text-align:center;font-size:13px;color:var(--cream2);font-family:'Helvetica Neue',Arial,sans-serif;}
-.ft-pos.top{color:var(--gold);font-size:20px;}
-.ft-name{flex:1;font-size:17px;}
-.ft-sc{font-size:22px;color:var(--gold);font-family:'Helvetica Neue',Arial,sans-serif;font-weight:bold;}
+.ft-row.win{background:var(--gold-light);}
+.ft-pos{width:30px;text-align:center;font-family:var(--mono);font-size:13px;color:var(--ink2);}
+.ft-pos.top{color:var(--gold);font-size:22px;}
+.ft-name{flex:1;font-family:var(--caps);font-size:18px;}
+.ft-sc{font-family:var(--display);font-size:24px;font-weight:600;color:var(--teal);}
 
-/* ── DIALOG ── */
-.dialog-wrap{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.92);align-items:center;justify-content:center;padding:24px;}
+/* ══════════════════════════════════════
+   DIALOG
+══════════════════════════════════════ */
+.dialog-wrap{
+  display:none;position:fixed;inset:0;z-index:200;
+  background:rgba(26,22,20,0.55);
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  align-items:center;justify-content:center;padding:24px;
+}
 .dialog-wrap.open{display:flex;}
-.dialog{background:#faf7f0;border:1px solid var(--border);border-radius:16px;padding:28px 22px;max-width:360px;width:100%;text-align:center;}
-.dialog-title{font-size:22px;color:var(--gold);margin-bottom:10px;}
-.dialog-body{font-size:14px;color:var(--cream2);font-family:'Helvetica Neue',Arial,sans-serif;line-height:1.6;margin-bottom:24px;}
+.dialog{
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:32px 24px;max-width:360px;width:100%;text-align:center;
+  box-shadow:0 24px 64px rgba(0,0,0,0.18);
+  animation:dialogIn .2s ease;
+}
+@keyframes dialogIn{from{opacity:0;transform:scale(0.96);}to{opacity:1;transform:scale(1);}}
+.dialog-title{font-family:var(--display);font-size:24px;font-weight:600;color:var(--teal);margin-bottom:10px;}
+.dialog-body{font-family:var(--caps);font-size:14px;color:var(--ink2);line-height:1.7;margin-bottom:24px;}
 .dialog-btns{display:flex;gap:12px;}
-.dialog-cancel{flex:1;padding:15px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--cream);font-size:15px;cursor:pointer;font-family:Georgia,serif;}
-.dialog-ok{flex:1;padding:15px;background:linear-gradient(135deg,#c9a84c,#a87830);border:none;border-radius:10px;color:#080f08;font-size:15px;font-weight:bold;cursor:pointer;font-family:Georgia,serif;}
+.dialog-cancel{
+  flex:1;padding:14px;background:transparent;border:1.5px solid var(--border);
+  border-radius:10px;color:var(--ink2);font-family:var(--caps);
+  font-size:11px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;
+}
+.dialog-ok{
+  flex:1;padding:14px;background:var(--teal);border:none;border-radius:10px;
+  color:#fff;font-family:var(--caps);font-size:11px;letter-spacing:3px;text-transform:uppercase;font-weight:600;cursor:pointer;
+}
 
-/* ── iPad / large screen ── */
-@media (min-width: 768px){
+/* ══════════════════════════════════════
+   iPad / Large Screen
+══════════════════════════════════════ */
+@media (min-width:768px){
   #app{max-width:640px;}
-  .game-title{font-size:64px;letter-spacing:6px;}
-  .game-tagline{font-size:13px;letter-spacing:9px;}
-  .player-input{font-size:22px;padding:18px 20px;}
-  .player-badge{width:36px;height:36px;font-size:14px;}
-  .setup-header{padding:56px 32px 24px;}
-  .sect-label{font-size:12px;letter-spacing:5px;}
-  .cta-btn{font-size:22px;padding:22px;border-radius:16px;}
-  .add-btn{font-size:15px;padding:17px;}
-  .dealer-opt{font-size:17px;padding:11px 20px;}
+  .game-title{font-size:70px;letter-spacing:4px;}
+  .game-tagline{font-size:12px;letter-spacing:10px;}
+  .setup-header{padding:64px 36px 24px;}
+  .header-rule span{width:56px;}
+  .player-input{font-size:21px;padding:17px 20px;}
+  .player-badge{width:38px;height:38px;font-size:15px;}
+  .sect-label{font-size:11px;letter-spacing:6px;}
+  .cta-btn{font-size:13px;letter-spacing:8px;padding:20px;}
+  .add-btn{font-size:12px;padding:16px;}
+  .dealer-opt{font-size:17px;padding:11px 22px;}
   .wchip{font-size:17px;padding:10px 20px;}
-  /* Game header */
-  .game-header{padding:16px 24px 0;}
-  .round-label{font-size:14px;letter-spacing:4px;}
-  .ghost-btn{font-size:13px;padding:8px 16px;}
-  .pip{width:10px;height:10px;}
-  .pip.done,.pip.now{width:13px;height:13px;margin:-1.5px 0;}
-  .info-card{padding:14px 18px;margin-bottom:12px;}
-  .wild-card{width:62px;height:88px;border-radius:9px;}
-  .card-rk{font-size:20px;}
-  .card-suit-center{font-size:26px;}
-  .round-title{font-size:24px;}
-  .round-meta{font-size:14px;}
-  .wild-pill,.dealer-pill{font-size:14px;padding:4px 13px;}
-  /* Matrix */
-  .matrix thead th{font-size:12px;padding:10px 8px;}
-  .matrix thead th.col-name{padding-left:24px;padding-right:16px;min-width:120px;}
-  .matrix thead th.col-total{padding-right:24px;min-width:64px;}
-  .matrix thead th.col-rnd{min-width:50px;}
+  .game-header{padding:16px 28px 0;}
+  .round-label{font-size:12px;letter-spacing:5px;}
+  .ghost-btn{font-size:11px;padding:8px 16px;}
+  .pip{height:6px;width:6px;}
+  .pip.done{width:10px;}
+  .pip.now{width:28px;}
+  .info-card{padding:16px 20px;margin-bottom:12px;}
+  .wild-card{width:62px;height:88px;}
+  .card-rk{font-size:19px;}
+  .card-suit-center{font-size:28px;}
+  .round-title{font-size:23px;}
+  .round-meta{font-size:13px;}
+  .wild-pill,.dealer-pill{font-size:13px;padding:3px 12px;}
+  .matrix thead th{padding:10px 8px;font-size:10px;}
+  .matrix thead th.col-name{padding-left:28px;padding-right:18px;min-width:130px;font-size:10px;}
+  .matrix thead th.col-total{padding-right:28px;min-width:70px;}
+  .matrix thead th.col-rnd{min-width:52px;}
   .matrix thead th.col-rnd.current-col{min-width:72px;}
-  .rnd-num{font-size:13px;}
-  .rnd-dealer{font-size:11px;}
-  .matrix tbody td{padding:13px 8px;font-size:17px;}
-  .matrix tbody td.col-name{padding-left:24px;font-size:18px;min-width:120px;}
-  .matrix tbody td.col-total{padding-right:24px;font-size:22px;min-width:64px;}
-  .rank-badge{width:22px;height:22px;line-height:22px;font-size:12px;}
-  .mi{width:58px;height:46px;font-size:23px;border-radius:9px;}
-  /* Winner bar */
-  .winner-bar{padding:10px 24px 8px;}
-  .winner-bar-label{font-size:12px;letter-spacing:4px;}
-  /* Footer */
-  .game-footer{padding:12px 24px 18px;}
-  .back-btn{width:64px;height:64px;font-size:26px;}
-  .next-btn{height:64px;font-size:18px;letter-spacing:3px;}
-  /* End screen */
-  .trophy-icon{font-size:88px;}
-  .winner-nm{font-size:52px;}
-  .winner-pts{font-size:18px;}
-  .ft-name{font-size:20px;}
-  .ft-sc{font-size:26px;}
-  .ft-pos{font-size:16px;}
+  .rnd-num{font-size:12px;}
+  .rnd-dealer{font-size:10px;}
+  .matrix tbody td{padding:13px 8px;font-size:16px;}
+  .matrix tbody td.col-name{padding-left:28px;font-size:18px;min-width:130px;}
+  .matrix tbody td.col-total{padding-right:28px;font-size:22px;min-width:70px;}
+  .rank-badge{width:24px;height:24px;font-size:11px;margin-right:9px;}
+  .mi{width:56px;height:46px;font-size:23px;border-radius:9px;}
+  .winner-bar{padding:12px 28px 10px;}
+  .winner-bar-label{font-size:10px;letter-spacing:6px;}
+  .game-footer{padding:12px 28px 18px;}
+  .back-btn{width:64px;height:64px;font-size:24px;}
+  .next-btn{height:64px;font-size:12px;letter-spacing:6px;}
+  .trophy-icon{font-size:96px;}
+  .winner-nm{font-size:58px;}
+  .ft-name{font-size:21px;}
+  .ft-sc{font-size:28px;}
 }
 </style>
 </head>
@@ -332,16 +576,17 @@ body::before{
 <!-- ── SETUP ── -->
 <div id="setup" class="screen active">
   <div class="setup-header">
-    <div class="game-title">Bush Rummy</div>
-    <div class="game-tagline">13 Rounds · Lowest Score Wins</div>
+    <div class="header-rule"><span></span><em>♣</em><span></span></div>
+    <div class="game-title">Bush <span class="game-title-em">Rummy</span></div>
+    <div class="game-tagline">13 Rounds &nbsp;·&nbsp; Lowest Score Wins</div>
+    <div class="footer-rule">— ♠ ♥ ♦ ♣ —</div>
   </div>
-  <div class="suits-row">♠ ♥ ♦ ♣</div>
   <div class="setup-body">
     <div class="sect-label">Players</div>
     <div id="player-list"></div>
     <button class="add-btn" id="add-btn" onclick="addPlayer()">+ Add Player</button>
     <div class="dealer-pick">
-      <div class="sect-label" style="margin-bottom:10px">First Dealer</div>
+      <div class="sect-label" style="margin-bottom:12px">First Dealer</div>
       <div class="dealer-options" id="dealer-opts"></div>
     </div>
   </div>
@@ -367,8 +612,8 @@ body::before{
       <div class="round-info">
         <div class="round-title" id="rnd-name">Three Card</div>
         <div class="round-meta" id="rnd-meta">3 cards each</div>
-        <div>
-          <span class="wild-pill" id="rnd-wild">3s & Jokers wild</span>
+        <div class="round-pills">
+          <span class="wild-pill" id="rnd-wild">3s &amp; Jokers wild</span>
           <span class="dealer-pill" id="rnd-dealer">Dealer: —</span>
         </div>
       </div>
@@ -384,7 +629,7 @@ body::before{
   </div>
   <div class="game-footer">
     <button class="back-btn" id="back-btn" onclick="goBack()" disabled>←</button>
-    <button class="next-btn" id="next-btn" onclick="goNext()" disabled>Next Round →</button>
+    <button class="next-btn" id="next-btn" onclick="goNext()" disabled>Next Round</button>
   </div>
 </div>
 
@@ -433,31 +678,24 @@ const ROUNDS = [
 
 let S = {
   players: ['',''],
-  scores: [],       // [playerIdx][roundIdx] = number|null
-  round: 0,         // current round (0-12)
-  editing: null,    // null or round index being edited
-  dealerStart: 0,   // which player index deals round 0
-  winners: [],      // [roundIdx] = playerIdx who won (went out first), or null
+  scores: [],
+  round: 0,
+  editing: null,
+  dealerStart: 0,
+  winners: [],
 };
 
-// ── Persist ──
 function save(){localStorage.setItem('br_v3',JSON.stringify(S));}
 function load(){try{const d=localStorage.getItem('br_v3');if(d){S=JSON.parse(d);return true;}}catch(e){}return false;}
 
-// ── Utils ──
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
 function totalUpTo(pi,ri){let t=0;for(let r=0;r<ri;r++)t+=(S.scores[pi]?.[r]??0);return t;}
 function fullTotal(pi){return(S.scores[pi]||[]).reduce((s,v)=>s+(v??0),0);}
 function dealerFor(ri){return S.players[(S.dealerStart+ri)%S.players.length];}
-function roundWinner(ri){
-  // Returns the explicit player index who won this round, or null
-  return S.winners[ri]??null;
-}
+function roundWinner(ri){return S.winners[ri]??null;}
 
-// ── SETUP ──
 function renderSetup(){
-  // Players
   const pl=document.getElementById('player-list');pl.innerHTML='';
   S.players.forEach((name,i)=>{
     const row=document.createElement('div');row.className='player-row';
@@ -512,17 +750,14 @@ function startGame(){
   save();show('game');renderGame();
 }
 
-// ── GAME ──
 function activeRound(){return S.editing!==null?S.editing:S.round;}
 
 function renderGame(){
   const ri=activeRound();
   const R=ROUNDS[ri];
 
-  // Top
   document.getElementById('rnd-lbl').textContent=`Round ${ri+1} of 13`;
 
-  // Pips
   const pips=document.getElementById('pips');pips.innerHTML='';
   for(let i=0;i<13;i++){
     const p=document.createElement('div');
@@ -531,7 +766,6 @@ function renderGame(){
     pips.appendChild(p);
   }
 
-  // Info card
   const col=R.red?'card-red':'card-black';
   ['wc-top','wc-bot'].forEach(id=>{const e=document.getElementById(id);e.textContent=R.rk;e.className='card-rk'+(id==='wc-bot'?' flip':'')+' '+col;});
   const mid=document.getElementById('wc-mid');mid.textContent=R.suit;mid.className='card-suit-center '+col;
@@ -540,82 +774,55 @@ function renderGame(){
   document.getElementById('rnd-wild').textContent=`${R.wild} & Jokers wild`;
   document.getElementById('rnd-dealer').textContent=`Dealer: ${dealerFor(ri)}`;
 
-  // Edit banner
   const banner=document.getElementById('edit-banner');
   if(S.editing!==null){banner.classList.add('show');document.getElementById('edit-num').textContent=S.editing+1;}
   else{banner.classList.remove('show');}
 
-  // Build matrix
   buildMatrix(ri);
   refreshButtons();
 
-  // Scroll current column into view
   setTimeout(()=>{
     const wrap=document.getElementById('matrix-wrap');
     const cur=document.querySelector('th.current-col');
     if(cur&&wrap){
-      const th=cur;
-      const left=th.offsetLeft;
-      const right=left+th.offsetWidth;
-      const wLeft=wrap.scrollLeft;
-      const wRight=wLeft+wrap.clientWidth;
+      const right=cur.offsetLeft+cur.offsetWidth;
+      const wRight=wrap.scrollLeft+wrap.clientWidth;
       if(right>wRight-60)wrap.scrollLeft=right-wrap.clientWidth+80;
     }
   },50);
 }
 
 function buildMatrix(ri){
-  // Sort players by running total (lowest first) — fixed during input
   const playerOrder=S.players.map((_,i)=>i).sort((a,b)=>totalUpTo(a,ri)-totalUpTo(b,ri));
-
   const tbl=document.getElementById('matrix');tbl.innerHTML='';
 
-  // ── THEAD ──
   const thead=document.createElement('thead');
   const hrow=document.createElement('tr');
-
-  // Name header
   const thName=document.createElement('th');thName.className='col-name';thName.textContent='Player';hrow.appendChild(thName);
 
-  // Round headers
   for(let r=0;r<13;r++){
     const th=document.createElement('th');
     th.className='col-rnd'+(r===ri?' current-col':'')+(r===S.editing?' editing':'');
-    if(r<S.round&&r!==ri){
-      // Completed, tappable to edit
-      th.onclick=(rr=>()=>{S.editing=rr;renderGame();})(r);
-      th.title=`Edit Round ${r+1}`;
-    }
+    if(r<S.round&&r!==ri){th.onclick=(rr=>()=>{S.editing=rr;renderGame();})(r);th.title=`Edit Round ${r+1}`;}
     const dealer=dealerFor(r);
     th.innerHTML=`<span class="rnd-num">R${r+1}</span><span class="rnd-dealer">${dealer[0].toUpperCase()}</span>`;
     hrow.appendChild(th);
   }
-
-  // Total header
   const thTot=document.createElement('th');thTot.className='col-total';thTot.textContent='Total';hrow.appendChild(thTot);
-
   thead.appendChild(hrow);tbl.appendChild(thead);
 
-  // ── TBODY ──
   const tbody=document.createElement('tbody');
-
   playerOrder.forEach((pi,rank)=>{
-    const name=S.players[pi];
     const tr=document.createElement('tr');
     if(rank===0)tr.classList.add('leader');
 
-    // Name cell
     const tdName=document.createElement('td');tdName.className='col-name';
-    const badge=`<span class="rank-badge${rank===0?' r1':''}">${rank+1}</span>`;
-    tdName.innerHTML=badge+esc(name);
+    tdName.innerHTML=`<span class="rank-badge${rank===0?' r1':''}">${rank+1}</span>${esc(S.players[pi])}`;
     tr.appendChild(tdName);
 
-    // Round cells
     for(let r=0;r<13;r++){
       const td=document.createElement('td');
-
       if(r===ri){
-        // Current/editing round — show input
         td.className='col-rnd sc-current';
         const saved=S.scores[pi]?.[ri];
         const inp=document.createElement('input');
@@ -626,58 +833,40 @@ function buildMatrix(ri){
         inp.addEventListener('input',onInput);
         td.appendChild(inp);
       }else if(r<S.round){
-        // Completed round
         const sc=S.scores[pi]?.[r]??0;
         const won=roundWinner(r)===pi;
         td.className='col-rnd'+(won?' sc-won':'');
         td.textContent=sc;
       }else{
-        // Future round
-        td.className='col-rnd sc-empty';
-        td.textContent='·';
+        td.className='col-rnd sc-empty';td.textContent='·';
       }
       tr.appendChild(td);
     }
 
-    // Total cell — running total up to and including current round's live input
     const tdTot=document.createElement('td');tdTot.className='col-total';
-    tdTot.id=`tot-${pi}`;
-    tdTot.textContent=totalUpTo(pi,ri);
+    tdTot.id=`tot-${pi}`;tdTot.textContent=totalUpTo(pi,ri);
     tr.appendChild(tdTot);
-
     tbody.appendChild(tr);
   });
 
   tbl.appendChild(tbody);
-  // Update totals with any existing input values
   updateTotals(ri);
   renderWinnerBar(ri);
 }
 
 function renderWinnerBar(ri){
-  const bar=document.getElementById('winner-bar');
-  const chips=document.getElementById('winner-chips');
-  chips.innerHTML='';
+  const chips=document.getElementById('winner-chips');chips.innerHTML='';
   const selected=S.winners[ri]??null;
-  // Sort by same order as table (player order by total)
   S.players.forEach((name,pi)=>{
     const btn=document.createElement('button');
     btn.className='wchip'+(selected===pi?' selected':'');
     btn.textContent=name;
-    btn.onclick=()=>{
-      S.winners[ri]=(S.winners[ri]===pi?null:pi); // toggle
-      renderWinnerBar(ri);
-      refreshButtons();
-    };
+    btn.onclick=()=>{S.winners[ri]=(S.winners[ri]===pi?null:pi);renderWinnerBar(ri);refreshButtons();};
     chips.appendChild(btn);
   });
 }
 
-function onInput(){
-  const ri=activeRound();
-  updateTotals(ri);
-  refreshButtons();
-}
+function onInput(){const ri=activeRound();updateTotals(ri);refreshButtons();}
 
 function updateTotals(ri){
   S.players.forEach((_,pi)=>{
@@ -696,7 +885,7 @@ function getInputVal(pi){
 }
 function allFilled(){
   const ri=activeRound();
-  return S.players.every((_,i)=>getInputVal(i)!==null) && (S.winners[ri]!==null&&S.winners[ri]!==undefined);
+  return S.players.every((_,i)=>getInputVal(i)!==null)&&(S.winners[ri]!==null&&S.winners[ri]!==undefined);
 }
 
 function refreshButtons(){
@@ -706,24 +895,21 @@ function refreshButtons(){
   nb.disabled=!allFilled();
   if(S.editing!==null)nb.textContent='Save Edit';
   else if(S.round>=12)nb.textContent='Finish Game';
-  else nb.textContent='Next Round →';
+  else nb.textContent='Next Round';
 }
 
 function goBack(){
   if(S.editing!==null){S.editing=null;renderGame();return;}
   if(S.round>0){S.editing=S.round-1;renderGame();}
 }
-
 function goNext(){
   const ri=activeRound();
   S.players.forEach((_,i)=>{const v=getInputVal(i);S.scores[i][ri]=v??0;});
-  // winner already stored via renderWinnerBar clicks
   if(S.editing!==null){S.editing=null;save();renderGame();return;}
   if(S.round>=12){save();showEnd();return;}
   S.round++;save();renderGame();
 }
 
-// ── END ──
 function showEnd(){
   const totals=S.players.map((n,i)=>({name:n,t:fullTotal(i)})).sort((a,b)=>a.t-b.t);
   document.getElementById('end-winner').textContent=totals[0].name;
@@ -737,7 +923,6 @@ function showEnd(){
   show('end');
 }
 
-// ── NEW GAME ──
 function askNewGame(){document.getElementById('dialog').classList.add('open');}
 function closeDialog(){document.getElementById('dialog').classList.remove('open');}
 function doNewGame(){
@@ -747,10 +932,9 @@ function doNewGame(){
   show('setup');renderSetup();
 }
 
-// ── INIT ──
 function init(){
   if(load()&&S.players&&S.players.length>=2&&S.scores&&S.scores.length>0){
-    if(!S.winners)S.winners=new Array(13).fill(null); // migrate old saves
+    if(!S.winners)S.winners=new Array(13).fill(null);
     if(S.round>=13){showEnd();}
     else if(S.round>0||(S.scores[0]&&S.scores[0].some(v=>v!==null))){show('game');renderGame();}
     else{show('setup');renderSetup();}
