@@ -2,28 +2,39 @@
 const express = require('express');
 const { createServer } = require('http');
 const { WebSocketServer } = require('ws');
-const Database = require('better-sqlite3');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const httpServer = createServer(app);
 const wss = new WebSocketServer({ server: httpServer });
 
-// ── Database ──────────────────────────────────────────────────────────────────
-const db = new Database(process.env.DB_PATH || './games.db');
-db.exec(`
-  CREATE TABLE IF NOT EXISTS games (
-    code    TEXT PRIMARY KEY,
-    state   TEXT NOT NULL,
-    updated INTEGER DEFAULT (strftime('%s','now'))
-  )
-`);
+// ── File-based game storage ───────────────────────────────────────────────────
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
-// Prune games older than 48 hours, hourly
-setInterval(() => {
-  db.prepare("DELETE FROM games WHERE updated < strftime('%s','now') - 172800").run();
-}, 3_600_000);
+function gamePath(code) { return path.join(DATA_DIR, `${code}.json`); }
+function gameExists(code) { return fs.existsSync(gamePath(code)); }
+function readGame(code) {
+  try { return JSON.parse(fs.readFileSync(gamePath(code), 'utf8')); } catch { return null; }
+}
+function writeGame(code, state) {
+  fs.writeFileSync(gamePath(code), JSON.stringify(state));
+}
+
+// Prune game files older than 48 hours
+function pruneGames() {
+  const cutoff = Date.now() - 48 * 3600 * 1000;
+  try {
+    for (const f of fs.readdirSync(DATA_DIR)) {
+      if (!f.endsWith('.json')) continue;
+      const stat = fs.statSync(path.join(DATA_DIR, f));
+      if (stat.mtimeMs < cutoff) fs.unlinkSync(path.join(DATA_DIR, f));
+    }
+  } catch { /* ignore */ }
+}
+setInterval(pruneGames, 3_600_000);
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '2mb' }));
@@ -34,7 +45,7 @@ const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O
 function genCode() {
   for (let i = 0; i < 100; i++) {
     const code = Array.from({ length: 4 }, () => CHARS[Math.random() * CHARS.length | 0]).join('');
-    if (!db.prepare('SELECT 1 FROM games WHERE code=?').get(code)) return code;
+    if (!gameExists(code)) return code;
   }
   throw new Error('Could not generate unique room code');
 }
@@ -43,7 +54,7 @@ function genCode() {
 app.post('/api/games', (req, res) => {
   try {
     const code = genCode();
-    db.prepare('INSERT INTO games (code,state) VALUES (?,?)').run(code, JSON.stringify(req.body.state ?? {}));
+    writeGame(code, req.body.state ?? {});
     res.json({ code });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -51,12 +62,13 @@ app.post('/api/games', (req, res) => {
 });
 
 app.get('/api/games/:code', (req, res) => {
-  const row = db.prepare('SELECT state FROM games WHERE code=?').get(req.params.code.toUpperCase());
-  if (!row) return res.status(404).json({ error: 'Room not found' });
-  res.json(JSON.parse(row.state));
+  const code = req.params.code.toUpperCase();
+  const state = readGame(code);
+  if (!state) return res.status(404).json({ error: 'Room not found' });
+  res.json(state);
 });
 
-// ── Card scanning (Claude vision) ─────────────────────────────────────────────
+// ── Card scanning ─────────────────────────────────────────────────────────────
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15_000_000 } });
 
 app.post('/api/scan', upload.single('image'), async (req, res) => {
@@ -114,11 +126,6 @@ Reply ONLY with valid JSON, no markdown, no extra text:
 // ── WebSocket ─────────────────────────────────────────────────────────────────
 const rooms = new Map(); // code → Set<WebSocket>
 
-function persist(code, state) {
-  db.prepare("UPDATE games SET state=?, updated=strftime('%s','now') WHERE code=?")
-    .run(JSON.stringify(state), code);
-}
-
 function broadcast(code, msg, except = null) {
   const clients = rooms.get(code);
   if (!clients) return;
@@ -133,8 +140,8 @@ wss.on('connection', (ws, req) => {
   const code = params.get('code')?.toUpperCase();
   if (!code) return ws.close(1008, 'Missing room code');
 
-  const row = db.prepare('SELECT state FROM games WHERE code=?').get(code);
-  if (!row) {
+  const state = readGame(code);
+  if (!state) {
     ws.send(JSON.stringify({ type: 'error', message: 'Room not found' }));
     return ws.close();
   }
@@ -142,17 +149,16 @@ wss.on('connection', (ws, req) => {
   if (!rooms.has(code)) rooms.set(code, new Set());
   rooms.get(code).add(ws);
 
-  // Send current state to newcomer
-  ws.send(JSON.stringify({ type: 'state', state: JSON.parse(row.state) }));
+  ws.send(JSON.stringify({ type: 'state', state }));
 
   ws.on('message', data => {
     try {
       const msg = JSON.parse(data);
       if (msg.type === 'state' && msg.state) {
-        persist(code, msg.state);
+        writeGame(code, msg.state);
         broadcast(code, msg, ws);
       }
-    } catch { /* ignore malformed messages */ }
+    } catch { /* ignore malformed */ }
   });
 
   ws.on('close', () => {
