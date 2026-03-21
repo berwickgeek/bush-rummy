@@ -199,8 +199,10 @@ body::before{
   width:7px;height:7px;border-radius:50%;
   background:rgba(201,168,76,0.18);transition:all .3s;
 }
-.pip.done{background:rgba(201,168,76,0.45);}
+.pip.done{background:rgba(201,168,76,0.45);cursor:pointer;width:9px;height:9px;margin:-1px 0;}
+.pip.done:active{background:var(--gold2);transform:scale(1.4);}
 .pip.now{background:var(--gold);width:9px;height:9px;margin:-1px 0;box-shadow:0 0 8px rgba(201,168,76,0.7);}
+.pip.done:hover{background:rgba(201,168,76,0.7);}
 
 /* Round info card */
 .info-card{
@@ -475,7 +477,7 @@ body::before{
     <div class="board-hdr">Standings</div>
     <div id="board-rows"></div>
   </div>
-  <div class="history-link" onclick="openHistory()">▾ Round History</div>
+  <div class="history-link" onclick="openHistory()">▾ Edit Past Rounds</div>
   <div class="game-footer">
     <button class="back-btn" id="back-btn" onclick="goBack()" disabled>←</button>
     <button class="next-btn" id="next-btn" onclick="goNext()" disabled>Next Round →</button>
@@ -613,11 +615,12 @@ function renderGame(){
   // Top bar
   document.getElementById('rnd-lbl').textContent=`Round ${ri+1} of 13`;
 
-  // Pips
+  // Pips — completed ones are tappable to jump to that round
   const pips=document.getElementById('pips');pips.innerHTML='';
   for(let i=0;i<13;i++){
     const p=document.createElement('div');
     p.className='pip'+(i<S.round?' done':'')+(i===ri?' now':'');
+    if(i<S.round){p.title=`Edit Round ${i+1}`;p.onclick=(()=>{const r=i;return()=>{S.editing=r;renderGame();}})();}
     pips.appendChild(p);
   }
 
