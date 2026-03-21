@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bush Rummy">
+<title>Bush Rummy</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+
+:root{
+  --felt:#091409;
+  --felt2:#0f1e0f;
+  --felt3:#162616;
+  --gold:#c9a84c;
+  --gold2:#e8c46a;
+  --gold-dim:rgba(201,168,76,0.3);
+  --cream:#f2e8c8;
+  --cream2:#c8b48a;
+  --cream3:rgba(242,232,200,0.45);
+  --red:#c0392b;
+  --surface:rgba(22,38,22,0.92);
+  --surface2:rgba(30,50,30,0.85);
+  --border:rgba(201,168,76,0.22);
+  --border2:rgba(201,168,76,0.12);
+  --r:14px;
+}
+
+html,body{
+  height:100%;
+  background:var(--felt);
+  color:var(--cream);
+  font-family:Georgia,'Times New Roman',serif;
+  overscroll-behavior:none;
+}
+
+/* Felt texture */
+body{
+  background-image:
+    radial-gradient(ellipse 80% 60% at 15% 15%, rgba(25,55,20,0.6) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 85% 85%, rgba(8,24,8,0.7) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 80% at 50% 50%, rgba(18,36,14,0.4) 0%, transparent 65%);
+}
+
+/* Suit watermark pattern */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Ctext x='10' y='30' font-size='18' fill='rgba(201,168,76,0.04)' font-family='serif'%3E♠%3C/text%3E%3Ctext x='45' y='65' font-size='18' fill='rgba(201,168,76,0.04)' font-family='serif'%3E♥%3C/text%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;
+}
+
+#app{
+  position:relative;z-index:1;
+  height:100%;
+  display:flex;flex-direction:column;
+  max-width:440px;margin:0 auto;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+
+.screen{display:none;flex-direction:column;height:100%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;}
+.screen.active{display:flex;}
+
+/* ─── TYPOGRAPHY HELPERS ─── */
+.label{
+  font-size:10px;letter-spacing:4px;text-transform:uppercase;
+  color:var(--gold);font-family:'Helvetica Neue',Arial,sans-serif;
+}
+.muted{color:var(--cream2);font-family:'Helvetica Neue',Arial,sans-serif;}
+.gold{color:var(--gold);}
+
+/* ══════════════════════════════════════
+   SETUP SCREEN
+══════════════════════════════════════ */
+.setup-header{
+  text-align:center;
+  padding:clamp(28px,8vw,52px) 24px 20px;
+}
+
+.title-card{
+  display:inline-block;
+  position:relative;
+}
+
+.game-title{
+  font-size:clamp(36px,10vw,52px);
+  font-weight:normal;
+  letter-spacing:4px;
+  color:var(--gold);
+  text-shadow:0 0 40px rgba(201,168,76,0.5),0 2px 0 rgba(0,0,0,0.5);
+  line-height:1;
+}
+
+.game-tagline{
+  font-size:11px;letter-spacing:7px;text-transform:uppercase;
+  color:var(--cream2);margin-top:10px;
+  font-family:'Helvetica Neue',Arial,sans-serif;
+}
+
+.suits-row{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  margin:18px 24px;color:var(--gold);font-size:18px;opacity:0.4;
+}
+.suits-row::before,.suits-row::after{
+  content:'';flex:1;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(201,168,76,0.4));
+}
+.suits-row::after{background:linear-gradient(90deg,rgba(201,168,76,0.4),transparent);}
+
+.setup-body{padding:0 20px;flex:1;}
+
+.player-row{
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:10px;
+  animation:fadeSlide .25s ease both;
+}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
+
+.player-badge{
+  width:30px;height:30px;border-radius:50%;flex-shrink:0;
+  background:rgba(201,168,76,0.1);border:1px solid var(--gold-dim);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;color:var(--gold);font-family:'Helvetica Neue',Arial,sans-serif;
+}
+
+.player-input{
+  flex:1;
+  background:rgba(255,255,255,0.05);border:1px solid var(--border);
+  border-radius:12px;padding:15px 16px;
+  font-size:18px;color:var(--cream);font-family:Georgia,serif;
+  outline:none;transition:border-color .2s,background .2s;
+  -webkit-appearance:none;
+}
+.player-input:focus{border-color:var(--gold);background:rgba(255,255,255,0.08);}
+.player-input::placeholder{color:rgba(242,232,200,0.2);font-style:italic;}
+
+.remove-btn{
+  width:38px;height:38px;border-radius:50%;flex-shrink:0;
+  background:rgba(192,57,43,0.12);border:1px solid rgba(192,57,43,0.25);
+  color:rgba(192,57,43,0.6);font-size:22px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;line-height:1;
+  transition:all .15s;
+}
+.remove-btn:active{background:rgba(192,57,43,0.25);}
+
+.add-btn{
+  width:100%;padding:14px;margin-top:4px;
+  background:transparent;border:1px dashed rgba(201,168,76,0.25);
+  border-radius:12px;color:var(--gold);
+  font-size:13px;letter-spacing:3px;text-transform:uppercase;
+  font-family:'Helvetica Neue',Arial,sans-serif;cursor:pointer;
+  transition:all .2s;
+}
+.add-btn:active{background:rgba(201,168,76,0.07);}
+
+.setup-footer{padding:20px;}
+
+.cta-btn{
+  width:100%;padding:18px;
+  background:linear-gradient(135deg,#c9a84c,#a87830);
+  border:none;border-radius:14px;
+  color:#080f08;font-size:18px;font-family:Georgia,serif;
+  letter-spacing:3px;text-transform:uppercase;font-weight:bold;
+  cursor:pointer;
+  box-shadow:0 4px 24px rgba(201,168,76,0.35),0 1px 0 rgba(255,255,255,0.15) inset;
+  transition:transform .15s,box-shadow .15s;
+  -webkit-appearance:none;
+}
+.cta-btn:active:not(:disabled){transform:scale(0.98);box-shadow:0 2px 12px rgba(201,168,76,0.2);}
+.cta-btn:disabled{opacity:0.3;cursor:not-allowed;box-shadow:none;}
+
+/* ══════════════════════════════════════
+   GAME SCREEN
+══════════════════════════════════════ */
+.game-header{
+  padding:12px 18px 0;flex-shrink:0;
+}
+
+.top-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+
+.round-label{font-size:12px;letter-spacing:3px;color:var(--cream2);font-family:'Helvetica Neue',Arial,sans-serif;}
+
+.ghost-btn{
+  background:transparent;border:1px solid var(--border);border-radius:8px;
+  padding:6px 13px;color:var(--gold);font-size:11px;letter-spacing:2px;
+  text-transform:uppercase;cursor:pointer;font-family:'Helvetica Neue',Arial,sans-serif;
+  transition:background .15s;
+}
+.ghost-btn:active{background:rgba(201,168,76,0.1);}
+
+/* Progress pips */
+.pips{display:flex;gap:4px;justify-content:center;margin-bottom:12px;flex-wrap:wrap;}
+.pip{
+  width:7px;height:7px;border-radius:50%;
+  background:rgba(201,168,76,0.18);transition:all .3s;
+}
+.pip.done{background:rgba(201,168,76,0.45);}
+.pip.now{background:var(--gold);width:9px;height:9px;margin:-1px 0;box-shadow:0 0 8px rgba(201,168,76,0.7);}
+
+/* Round info card */
+.info-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  padding:12px 14px;display:flex;align-items:center;gap:14px;
+  margin-bottom:10px;position:relative;overflow:hidden;
+}
+.info-card::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(201,168,76,0.5),transparent);
+}
+
+/* Wild card visual */
+.wild-card{
+  width:50px;height:70px;border-radius:7px;
+  background:linear-gradient(160deg,#f7f0e2,#ede0c4);
+  display:flex;flex-direction:column;justify-content:space-between;
+  padding:5px;flex-shrink:0;
+  box-shadow:2px 3px 12px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.9);
+  position:relative;
+}
+.wild-card::before{
+  content:'';position:absolute;inset:3px;border:1px solid rgba(0,0,0,0.08);border-radius:4px;pointer-events:none;
+}
+.card-rk{font-size:17px;font-weight:bold;font-family:Georgia,serif;line-height:1;}
+.card-rk.flip{transform:rotate(180deg);align-self:flex-end;}
+.card-suit-center{font-size:20px;line-height:1;text-align:center;}
+.card-red{color:#c0392b;}
+.card-black{color:#1c1c1c;}
+
+.round-info{flex:1;}
+.round-title{font-size:19px;color:var(--gold);line-height:1.2;}
+.round-sub{font-size:12px;color:var(--cream2);margin-top:3px;font-family:'Helvetica Neue',Arial,sans-serif;}
+.wild-pill{
+  display:inline-block;margin-top:7px;
+  background:rgba(201,168,76,0.12);border:1px solid var(--gold-dim);
+  border-radius:20px;padding:3px 10px;
+  font-size:12px;color:var(--cream);font-family:'Helvetica Neue',Arial,sans-serif;
+}
+
+/* Edit banner */
+.edit-banner{
+  margin:0 18px 8px;
+  background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);
+  border-radius:8px;padding:7px 14px;text-align:center;
+  font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);
+  font-family:'Helvetica Neue',Arial,sans-serif;
+  display:none;
+}
+.edit-banner.show{display:block;}
+
+/* Player score rows */
+.score-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 18px;}
+
+.score-row{
+  display:flex;align-items:center;gap:12px;
+  background:rgba(255,255,255,0.035);border:1px solid var(--border2);
+  border-radius:12px;padding:11px 13px;margin-bottom:9px;
+  transition:border-color .2s;
+}
+.score-row:focus-within{border-color:var(--border);background:rgba(255,255,255,0.055);}
+
+.score-row-info{flex:1;min-width:0;}
+.score-row-name{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.score-row-total{font-size:12px;color:var(--cream2);margin-top:2px;font-family:'Helvetica Neue',Arial,sans-serif;}
+
+.score-input{
+  width:76px;height:54px;flex-shrink:0;
+  background:rgba(0,0,0,0.35);border:1px solid rgba(201,168,76,0.22);
+  border-radius:10px;color:var(--cream);
+  font-size:26px;font-family:Georgia,serif;
+  text-align:center;outline:none;
+  -webkit-appearance:none;-moz-appearance:textfield;
+  transition:border-color .2s,background .2s;
+}
+.score-input:focus{border-color:var(--gold);background:rgba(0,0,0,0.55);}
+.score-input::-webkit-outer-spin-button,
+.score-input::-webkit-inner-spin-button{-webkit-appearance:none;}
+.score-input::placeholder{color:rgba(242,232,200,0.18);font-size:16px;}
+
+/* Leaderboard */
+.board{
+  margin:4px 18px 8px;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  overflow:hidden;flex-shrink:0;
+}
+.board-hdr{
+  padding:8px 14px;font-size:10px;letter-spacing:4px;text-transform:uppercase;
+  color:var(--gold);font-family:'Helvetica Neue',Arial,sans-serif;
+  border-bottom:1px solid var(--border2);
+}
+.board-row{
+  display:flex;align-items:center;padding:8px 14px;gap:10px;
+  border-bottom:1px solid var(--border2);transition:background .2s;
+}
+.board-row:last-child{border-bottom:none;}
+.board-row.p1{background:rgba(201,168,76,0.07);}
+.board-pos{width:22px;text-align:center;font-size:12px;color:var(--cream2);font-family:'Helvetica Neue',Arial,sans-serif;flex-shrink:0;}
+.board-pos.top{color:var(--gold);font-size:16px;}
+.board-name{flex:1;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.board-score{font-size:17px;color:var(--gold);font-weight:bold;font-family:'Helvetica Neue',Arial,sans-serif;}
+
+.history-link{
+  text-align:center;padding:2px 0 8px;
+  font-size:11px;letter-spacing:2px;color:rgba(201,168,76,0.45);
+  cursor:pointer;font-family:'Helvetica Neue',Arial,sans-serif;
+  text-transform:uppercase;
+}
+
+/* Footer buttons */
+.game-footer{padding:10px 18px 14px;display:flex;gap:10px;flex-shrink:0;}
+
+.back-btn{
+  width:54px;height:54px;flex-shrink:0;
+  background:rgba(255,255,255,0.05);border:1px solid var(--border);
+  border-radius:12px;color:var(--gold);font-size:22px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:background .15s;
+}
+.back-btn:active:not(:disabled){background:rgba(255,255,255,0.09);}
+.back-btn:disabled{opacity:0.2;cursor:not-allowed;}
+
+.next-btn{
+  flex:1;height:54px;
+  background:linear-gradient(135deg,#c9a84c,#a87830);
+  border:none;border-radius:12px;
+  color:#080f08;font-size:15px;font-family:Georgia,serif;
+  letter-spacing:2px;text-transform:uppercase;font-weight:bold;
+  cursor:pointer;
+  box-shadow:0 4px 16px rgba(201,168,76,0.3);
+  transition:transform .15s,box-shadow .15s,opacity .15s;
+  -webkit-appearance:none;
+}
+.next-btn:active:not(:disabled){transform:scale(0.98);box-shadow:0 2px 8px rgba(201,168,76,0.15);}
+.next-btn:disabled{opacity:0.3;cursor:not-allowed;box-shadow:none;}
+
+/* ══════════════════════════════════════
+   END SCREEN
+══════════════════════════════════════ */
+.end-body{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  padding:clamp(28px,8vw,48px) 22px 22px;text-align:center;
+}
+
+.trophy-icon{font-size:68px;margin-bottom:14px;animation:bob 2.8s ease-in-out infinite;}
+@keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-9px);}}
+
+.winner-pre{font-size:10px;letter-spacing:6px;text-transform:uppercase;color:var(--cream2);font-family:'Helvetica Neue',Arial,sans-serif;margin-bottom:6px;}
+.winner-nm{font-size:clamp(30px,8vw,42px);color:var(--gold);text-shadow:0 0 30px rgba(201,168,76,0.5);}
+.winner-pts{font-size:14px;color:var(--cream2);margin-top:4px;font-family:'Helvetica Neue',Arial,sans-serif;margin-bottom:28px;}
+
+.final-table{
+  width:100%;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);overflow:hidden;margin-bottom:28px;
+}
+.ft-row{display:flex;align-items:center;padding:13px 16px;gap:12px;border-bottom:1px solid var(--border2);}
+.ft-row:last-child{border-bottom:none;}
+.ft-row.win{background:rgba(201,168,76,0.09);}
+.ft-pos{width:28px;text-align:center;font-size:13px;color:var(--cream2);font-family:'Helvetica Neue',Arial,sans-serif;}
+.ft-pos.top{color:var(--gold);font-size:20px;}
+.ft-name{flex:1;font-size:17px;}
+.ft-sc{font-size:22px;color:var(--gold);font-family:'Helvetica Neue',Arial,sans-serif;font-weight:bold;}
+
+/* ══════════════════════════════════════
+   HISTORY MODAL
+══════════════════════════════════════ */
+.modal-wrap{
+  display:none;position:fixed;inset:0;z-index:100;
+  background:rgba(0,0,0,0.88);overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:20px 16px;
+}
+.modal-wrap.open{display:block;}
+.modal{
+  background:#102010;border:1px solid var(--border);border-radius:16px;
+  overflow:hidden;max-width:440px;margin:0 auto;
+}
+.modal-hdr{
+  padding:14px 18px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border2);
+}
+.modal-title{font-size:12px;letter-spacing:4px;text-transform:uppercase;color:var(--gold);font-family:'Helvetica Neue',Arial,sans-serif;}
+.modal-close{background:none;border:none;color:var(--cream2);font-size:26px;cursor:pointer;line-height:1;padding:0 4px;}
+
+.hist-round{
+  padding:12px 18px;border-bottom:1px solid var(--border2);cursor:pointer;
+  transition:background .15s;
+}
+.hist-round:last-child{border-bottom:none;}
+.hist-round:active{background:rgba(255,255,255,0.03);}
+.hist-round-hdr{
+  display:flex;justify-content:space-between;margin-bottom:7px;
+  font-size:13px;color:var(--gold);font-family:'Helvetica Neue',Arial,sans-serif;letter-spacing:.5px;
+}
+.hist-edit-hint{color:rgba(201,168,76,0.4);font-size:11px;}
+.hist-scores{display:flex;flex-wrap:wrap;gap:10px;}
+.hist-chip{font-size:13px;color:var(--cream2);font-family:'Helvetica Neue',Arial,sans-serif;}
+.hist-chip b{color:var(--cream);font-weight:normal;}
+
+/* ══════════════════════════════════════
+   CONFIRM DIALOG
+══════════════════════════════════════ */
+.dialog-wrap{
+  display:none;position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,0.92);
+  align-items:center;justify-content:center;padding:24px;
+}
+.dialog-wrap.open{display:flex;}
+.dialog{
+  background:#102010;border:1px solid var(--border);border-radius:16px;
+  padding:28px 22px;max-width:360px;width:100%;text-align:center;
+}
+.dialog-title{font-size:22px;color:var(--gold);margin-bottom:10px;}
+.dialog-body{font-size:14px;color:var(--cream2);font-family:'Helvetica Neue',Arial,sans-serif;line-height:1.6;margin-bottom:24px;}
+.dialog-btns{display:flex;gap:12px;}
+.dialog-cancel{
+  flex:1;padding:15px;background:transparent;
+  border:1px solid var(--border);border-radius:10px;
+  color:var(--cream);font-size:15px;cursor:pointer;font-family:Georgia,serif;
+}
+.dialog-ok{
+  flex:1;padding:15px;
+  background:linear-gradient(135deg,#c9a84c,#a87830);
+  border:none;border-radius:10px;
+  color:#080f08;font-size:15px;font-weight:bold;cursor:pointer;font-family:Georgia,serif;
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ── SETUP ── -->
+<div id="setup" class="screen active">
+  <div class="setup-header">
+    <div class="game-title">Bush Rummy</div>
+    <div class="game-tagline">13 Rounds · Lowest Score Wins</div>
+  </div>
+  <div class="suits-row">♠ ♥ ♦ ♣</div>
+  <div class="setup-body">
+    <div class="label" style="margin-bottom:14px">Players</div>
+    <div id="player-list"></div>
+    <button class="add-btn" id="add-btn" onclick="addPlayer()">+ Add Player</button>
+  </div>
+  <div class="setup-footer">
+    <button class="cta-btn" id="start-btn" onclick="startGame()" disabled>Deal Cards</button>
+  </div>
+</div>
+
+<!-- ── GAME ── -->
+<div id="game" class="screen">
+  <div class="game-header">
+    <div class="top-bar">
+      <div class="round-label" id="rnd-lbl">Round 1 of 13</div>
+      <button class="ghost-btn" onclick="askNewGame()">New Game</button>
+    </div>
+    <div class="pips" id="pips"></div>
+    <div class="info-card">
+      <div class="wild-card" id="wild-card">
+        <div class="card-rk" id="wc-top">3</div>
+        <div class="card-suit-center" id="wc-mid">♣</div>
+        <div class="card-rk flip" id="wc-bot">3</div>
+      </div>
+      <div class="round-info">
+        <div class="round-title" id="rnd-name">Three Card</div>
+        <div class="round-sub" id="rnd-sub">3 cards each</div>
+        <div class="wild-pill" id="rnd-wild">3s & Jokers wild</div>
+      </div>
+    </div>
+  </div>
+  <div class="edit-banner" id="edit-banner">Editing Round <span id="edit-num">1</span></div>
+  <div class="score-list" id="score-list"></div>
+  <div class="board" id="board">
+    <div class="board-hdr">Standings</div>
+    <div id="board-rows"></div>
+  </div>
+  <div class="history-link" onclick="openHistory()">▾ Round History</div>
+  <div class="game-footer">
+    <button class="back-btn" id="back-btn" onclick="goBack()" disabled>←</button>
+    <button class="next-btn" id="next-btn" onclick="goNext()" disabled>Next Round →</button>
+  </div>
+</div>
+
+<!-- ── END ── -->
+<div id="end" class="screen">
+  <div class="end-body">
+    <div class="trophy-icon">🏆</div>
+    <div class="winner-pre">Winner</div>
+    <div class="winner-nm" id="end-winner">—</div>
+    <div class="winner-pts" id="end-pts">with 0 points</div>
+    <div class="final-table" id="final-table"></div>
+    <button class="cta-btn" onclick="askNewGame()">Play Again</button>
+  </div>
+</div>
+
+</div><!-- #app -->
+
+<!-- History modal -->
+<div class="modal-wrap" id="hist-modal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title">Round History</div>
+      <button class="modal-close" onclick="closeHistory()">×</button>
+    </div>
+    <div id="hist-content"></div>
+  </div>
+</div>
+
+<!-- Confirm dialog -->
+<div class="dialog-wrap" id="dialog">
+  <div class="dialog">
+    <div class="dialog-title">New Game?</div>
+    <div class="dialog-body">This will clear all scores and start fresh.</div>
+    <div class="dialog-btns">
+      <button class="dialog-cancel" onclick="closeDialog()">Cancel</button>
+      <button class="dialog-ok" onclick="doNewGame()">New Game</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Round definitions ───
+const ROUNDS = [
+  {name:'Three Card',  cards:3,  wild:'3s',    rk:'3',  suit:'♣', red:false},
+  {name:'Four Card',   cards:4,  wild:'4s',    rk:'4',  suit:'♦', red:true },
+  {name:'Five Card',   cards:5,  wild:'5s',    rk:'5',  suit:'♠', red:false},
+  {name:'Six Card',    cards:6,  wild:'6s',    rk:'6',  suit:'♥', red:true },
+  {name:'Seven Card',  cards:7,  wild:'7s',    rk:'7',  suit:'♣', red:false},
+  {name:'Eight Card',  cards:8,  wild:'8s',    rk:'8',  suit:'♦', red:true },
+  {name:'Nine Card',   cards:9,  wild:'9s',    rk:'9',  suit:'♠', red:false},
+  {name:'Ten Card',    cards:10, wild:'10s',   rk:'10', suit:'♥', red:true },
+  {name:'Jack Round',  cards:11, wild:'Jacks', rk:'J',  suit:'♠', red:false},
+  {name:'Queen Round', cards:12, wild:'Queens',rk:'Q',  suit:'♥', red:true },
+  {name:'King Round',  cards:13, wild:'Kings', rk:'K',  suit:'♣', red:false},
+  {name:'Ace Round',   cards:14, wild:'Aces',  rk:'A',  suit:'♦', red:true },
+  {name:'Two Card',    cards:15, wild:'2s',    rk:'2',  suit:'♥', red:true },
+];
+
+// ─── State ───
+let S = {
+  players: ['',''],
+  scores: [],      // [playerIdx][roundIdx] = number|null
+  round: 0,        // current round index (0-12)
+  editing: null,   // null or round index being edited
+};
+
+// ─── Persistence ───
+function save(){localStorage.setItem('br_v2',JSON.stringify(S));}
+function load(){
+  try{const d=localStorage.getItem('br_v2');if(d)S=JSON.parse(d);return true;}
+  catch(e){return false;}
+}
+
+// ─── Utils ───
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function totalUpTo(pi,ri){let t=0;for(let r=0;r<ri;r++)t+=(S.scores[pi]?.[r]??0);return t;}
+function fullTotal(pi){return(S.scores[pi]||[]).reduce((s,v)=>s+(v??0),0);}
+
+// ─── SETUP ───
+function renderSetup(){
+  const el=document.getElementById('player-list');
+  el.innerHTML='';
+  S.players.forEach((name,i)=>{
+    const row=document.createElement('div');
+    row.className='player-row';
+    row.innerHTML=`
+      <div class="player-badge">${i+1}</div>
+      <input class="player-input" type="text" placeholder="Player ${i+1}" value="${esc(name)}"
+        maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false"
+        oninput="S.players[${i}]=this.value;checkStart()"
+        onkeydown="if(event.key==='Enter')this.blur()">
+      ${S.players.length>2
+        ?`<button class="remove-btn" onclick="removePlayer(${i})">−</button>`
+        :`<div style="width:38px;flex-shrink:0"></div>`}
+    `;
+    el.appendChild(row);
+  });
+  document.getElementById('add-btn').style.display=S.players.length>=6?'none':'block';
+  checkStart();
+}
+function checkStart(){
+  document.getElementById('start-btn').disabled=
+    S.players.length<2||S.players.some(p=>!p.trim());
+}
+function addPlayer(){
+  if(S.players.length<6){
+    S.players.push('');
+    renderSetup();
+    setTimeout(()=>{
+      const inputs=document.querySelectorAll('.player-input');
+      if(inputs.length)inputs[inputs.length-1].focus();
+    },60);
+  }
+}
+function removePlayer(i){
+  S.players.splice(i,1);
+  renderSetup();
+}
+function startGame(){
+  S.players=S.players.map(p=>p.trim());
+  S.scores=S.players.map(()=>new Array(13).fill(null));
+  S.round=0;S.editing=null;
+  save();show('game');renderGame();
+}
+
+// ─── GAME ───
+function renderGame(){
+  const ri=S.editing!==null?S.editing:S.round;
+  const R=ROUNDS[ri];
+
+  // Top bar
+  document.getElementById('rnd-lbl').textContent=`Round ${ri+1} of 13`;
+
+  // Pips
+  const pips=document.getElementById('pips');pips.innerHTML='';
+  for(let i=0;i<13;i++){
+    const p=document.createElement('div');
+    p.className='pip'+(i<S.round?' done':'')+(i===ri?' now':'');
+    pips.appendChild(p);
+  }
+
+  // Wild card
+  const col=R.red?'card-red':'card-black';
+  document.getElementById('wc-top').textContent=R.rk;
+  document.getElementById('wc-top').className='card-rk '+col;
+  document.getElementById('wc-mid').textContent=R.suit;
+  document.getElementById('wc-mid').className='card-suit-center '+col;
+  document.getElementById('wc-bot').textContent=R.rk;
+  document.getElementById('wc-bot').className='card-rk flip '+col;
+
+  // Round info text
+  document.getElementById('rnd-name').textContent=R.name;
+  document.getElementById('rnd-sub').textContent=`${R.cards} cards each`;
+  document.getElementById('rnd-wild').textContent=`${R.wild} & Jokers wild`;
+
+  // Edit banner
+  const banner=document.getElementById('edit-banner');
+  if(S.editing!==null){
+    banner.classList.add('show');
+    document.getElementById('edit-num').textContent=S.editing+1;
+  }else{
+    banner.classList.remove('show');
+  }
+
+  // Score inputs
+  const list=document.getElementById('score-list');list.innerHTML='';
+  S.players.forEach((name,i)=>{
+    const total=totalUpTo(i,ri);
+    const saved=S.scores[i]?.[ri];
+    const row=document.createElement('div');row.className='score-row';
+    row.innerHTML=`
+      <div class="score-row-info">
+        <div class="score-row-name">${esc(name)}</div>
+        <div class="score-row-total">Running total: ${total}</div>
+      </div>
+      <input class="score-input" type="number" inputmode="numeric" pattern="[0-9]*"
+        min="0" placeholder="—"
+        value="${saved!==null?saved:''}"
+        id="si-${i}"
+        oninput="onInput()">
+    `;
+    list.appendChild(row);
+  });
+
+  renderBoard(ri);
+  refreshButtons();
+}
+
+function onInput(){renderBoard(S.editing!==null?S.editing:S.round);refreshButtons();}
+
+function getInputVal(i){
+  const el=document.getElementById(`si-${i}`);
+  if(!el||el.value==='')return null;
+  return Math.max(0,parseInt(el.value)||0);
+}
+
+function allFilled(){return S.players.every((_,i)=>getInputVal(i)!==null);}
+
+function refreshButtons(){
+  const ri=S.editing!==null?S.editing:S.round;
+  document.getElementById('back-btn').disabled=(S.editing===null&&S.round===0);
+  const nb=document.getElementById('next-btn');
+  nb.disabled=!allFilled();
+  if(S.editing!==null) nb.textContent='Save Edit';
+  else if(S.round>=12) nb.textContent='Finish Game';
+  else nb.textContent='Next Round →';
+}
+
+function renderBoard(ri){
+  const totals=S.players.map((name,i)=>{
+    let t=totalUpTo(i,ri);
+    const live=getInputVal(i);
+    if(live!==null) t+=live;
+    else if(S.scores[i]?.[ri]!==null&&S.scores[i]?.[ri]!==undefined) t+=S.scores[i][ri];
+    return{name,t,i};
+  }).sort((a,b)=>a.t-b.t);
+
+  const el=document.getElementById('board-rows');el.innerHTML='';
+  totals.forEach((p,pos)=>{
+    const row=document.createElement('div');
+    row.className='board-row'+(pos===0?' p1':'');
+    row.innerHTML=`
+      <div class="board-pos ${pos===0?'top':''}">${pos===0?'♛':pos+1}</div>
+      <div class="board-name">${esc(p.name)}</div>
+      <div class="board-score">${p.t}</div>
+    `;
+    el.appendChild(row);
+  });
+}
+
+function goBack(){
+  if(S.editing!==null){S.editing=null;renderGame();return;}
+  if(S.round>0){S.editing=S.round-1;renderGame();}
+}
+
+function goNext(){
+  const ri=S.editing!==null?S.editing:S.round;
+  // Save inputs
+  S.players.forEach((_,i)=>{const v=getInputVal(i);S.scores[i][ri]=v??0;});
+
+  if(S.editing!==null){S.editing=null;save();renderGame();return;}
+  if(S.round>=12){save();showEnd();return;}
+  S.round++;save();renderGame();
+  document.getElementById('score-list').scrollTop=0;
+}
+
+// ─── HISTORY ───
+function openHistory(){
+  const el=document.getElementById('hist-content');el.innerHTML='';
+  if(S.round===0){
+    el.innerHTML='<div style="padding:20px;text-align:center;font-size:14px;color:var(--cream2);font-family:Helvetica Neue,sans-serif;">No rounds completed yet.</div>';
+  }else{
+    for(let r=0;r<S.round;r++){
+      const R=ROUNDS[r];
+      const div=document.createElement('div');div.className='hist-round';
+      div.onclick=()=>editRound(r);
+      const chips=S.players.map((n,i)=>`<div class="hist-chip">${esc(n)}: <b>${S.scores[i]?.[r]??0}</b></div>`).join('');
+      div.innerHTML=`
+        <div class="hist-round-hdr">
+          <span>Round ${r+1} — ${R.name}</span>
+          <span class="hist-edit-hint">tap to edit</span>
+        </div>
+        <div class="hist-scores">${chips}</div>
+      `;
+      el.appendChild(div);
+    }
+  }
+  document.getElementById('hist-modal').classList.add('open');
+}
+function closeHistory(){document.getElementById('hist-modal').classList.remove('open');}
+function editRound(r){closeHistory();S.editing=r;show('game');renderGame();}
+
+// ─── END SCREEN ───
+function showEnd(){
+  const totals=S.players.map((n,i)=>({name:n,t:fullTotal(i)})).sort((a,b)=>a.t-b.t);
+  document.getElementById('end-winner').textContent=totals[0].name;
+  document.getElementById('end-pts').textContent=`with ${totals[0].t} points`;
+  const tbl=document.getElementById('final-table');tbl.innerHTML='';
+  totals.forEach((p,pos)=>{
+    const row=document.createElement('div');row.className='ft-row'+(pos===0?' win':'');
+    row.innerHTML=`
+      <div class="ft-pos ${pos===0?'top':''}">${pos===0?'🏆':pos+1}</div>
+      <div class="ft-name">${esc(p.name)}</div>
+      <div class="ft-sc">${p.t}</div>
+    `;
+    tbl.appendChild(row);
+  });
+  show('end');
+}
+
+// ─── NEW GAME ───
+function askNewGame(){document.getElementById('dialog').classList.add('open');}
+function closeDialog(){document.getElementById('dialog').classList.remove('open');}
+function doNewGame(){
+  closeDialog();
+  localStorage.removeItem('br_v2');
+  S={players:['',''],scores:[],round:0,editing:null};
+  show('setup');renderSetup();
+}
+
+// ─── INIT ───
+function init(){
+  if(load()&&S.players&&S.players.length>=2&&S.scores&&S.scores.length>0){
+    // Restore session
+    if(S.round>=13){showEnd();}
+    else if(S.round>0||(S.scores[0]&&S.scores[0].some(v=>v!==null))){show('game');renderGame();}
+    else{show('setup');S.players=S.players.map(p=>p||'');renderSetup();}
+  }else{
+    S={players:['',''],scores:[],round:0,editing:null};
+    show('setup');renderSetup();
+  }
+}
+init();
+</script>
+</body>
+</html>
