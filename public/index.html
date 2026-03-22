@@ -690,7 +690,8 @@ body::before{
     <div class="winner-nm" id="end-winner">—</div>
     <div class="winner-pts" id="end-pts">with 0 points</div>
     <div class="final-table" id="final-table"></div>
-    <button class="cta-btn" onclick="askNewGame()">Play Again</button>
+    <button class="cta-btn" style="margin-bottom:10px" onclick="shareResults()">⬆ Share Results</button>
+    <button class="cta-btn" style="background:transparent;border:1.5px solid var(--border);color:var(--teal)" onclick="askNewGame()">Play Again</button>
   </div>
 </div>
 
@@ -1249,6 +1250,37 @@ function showEnd() {
     tbl.appendChild(row);
   });
   show('end');
+  saveResultToServer(totals);
+}
+
+async function saveResultToServer(totals) {
+  try {
+    const result = {
+      code: ROOM_CODE || null,
+      date: new Date().toISOString(),
+      players: S.players,
+      totals: totals.map(p => ({ name: p.name, score: p.t })),
+      winner: totals[0].name,
+      rounds: 13,
+    };
+    await fetch('/api/results', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(result),
+    });
+  } catch { /* best effort — ignore failures */ }
+}
+
+function shareResults() {
+  const totals = S.players.map((n,i) => ({name:n,t:fullTotal(i)})).sort((a,b) => a.t - b.t);
+  const date = new Date().toLocaleDateString('en-AU', { day:'numeric', month:'short', year:'numeric' });
+  const lines = totals.map((p, i) => `${i === 0 ? '🏆' : (i+1)+'.'} ${p.name} — ${p.t} pts`);
+  const text = `🃏 Bush Rummy · ${date}\n\n${lines.join('\n')}`;
+  if (navigator.share) {
+    navigator.share({ title: 'Bush Rummy Results', text }).catch(() => {});
+  } else {
+    navigator.clipboard?.writeText(text).then(() => alert('Results copied!')).catch(() => alert(text));
+  }
 }
 
 function askNewGame() { document.getElementById('dialog').classList.add('open'); }

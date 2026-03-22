@@ -14,6 +14,30 @@ const wss = new WebSocketServer({ server: httpServer });
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
+// ── Results storage ───────────────────────────────────────────────────────────
+const RESULTS_DIR = process.env.RESULTS_DIR || path.join(__dirname, 'results');
+if (!fs.existsSync(RESULTS_DIR)) fs.mkdirSync(RESULTS_DIR, { recursive: true });
+
+function saveResult(result) {
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  const file = path.join(RESULTS_DIR, `${ts}_${result.code || 'solo'}.json`);
+  fs.writeFileSync(file, JSON.stringify(result));
+}
+
+function listResults(limit = 30) {
+  try {
+    return fs.readdirSync(RESULTS_DIR)
+      .filter(f => f.endsWith('.json'))
+      .sort().reverse()
+      .slice(0, limit)
+      .map(f => {
+        try { return JSON.parse(fs.readFileSync(path.join(RESULTS_DIR, f), 'utf8')); }
+        catch { return null; }
+      })
+      .filter(Boolean);
+  } catch { return []; }
+}
+
 function gamePath(code) { return path.join(DATA_DIR, `${code}.json`); }
 function gameExists(code) { return fs.existsSync(gamePath(code)); }
 function readGame(code) {
@@ -66,6 +90,23 @@ app.get('/api/games/:code', (req, res) => {
   const state = readGame(code);
   if (!state) return res.status(404).json({ error: 'Room not found' });
   res.json(state);
+});
+
+// ── Results routes ────────────────────────────────────────────────────────────
+app.post('/api/results', (req, res) => {
+  try {
+    const result = req.body;
+    if (!result.players || !result.totals) return res.status(400).json({ error: 'Invalid result' });
+    result.savedAt = new Date().toISOString();
+    saveResult(result);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/results', (req, res) => {
+  res.json(listResults(parseInt(req.query.limit) || 30));
 });
 
 // ── Card scanning ─────────────────────────────────────────────────────────────
