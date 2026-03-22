@@ -316,12 +316,12 @@ body::before{
   background:var(--teal);
   padding-right:20px;min-width:58px;
 }
-.matrix thead th.col-rnd{min-width:44px;}
-.matrix thead th.col-rnd.current-col{background:var(--teal2);min-width:64px;}
+.matrix thead th.col-rnd{min-width:50px;}
+.matrix thead th.col-rnd.current-col{background:var(--teal2);min-width:68px;}
 .matrix thead th.col-rnd.editing{background:rgba(176,126,26,0.6);}
 
-.rnd-num{display:block;font-size:9px;letter-spacing:1px;}
-.rnd-dealer{display:block;font-size:8px;opacity:.6;margin-top:1px;}
+.rnd-num{display:block;font-size:12px;font-weight:600;letter-spacing:0;}
+.rnd-dealer{display:block;font-size:10px;opacity:.7;margin-top:2px;}
 
 .matrix tbody tr{border-bottom:1px solid var(--border2);}
 .matrix tbody tr:nth-child(even){background:rgba(30,74,92,0.025);}
@@ -564,8 +564,8 @@ body::before{
   .matrix thead th.col-total{padding-right:28px;min-width:70px;}
   .matrix thead th.col-rnd{min-width:52px;}
   .matrix thead th.col-rnd.current-col{min-width:76px;}
-  .rnd-num{font-size:12px;}
-  .rnd-dealer{font-size:10px;}
+  .rnd-num{font-size:14px;}
+  .rnd-dealer{font-size:11px;}
   .matrix tbody td{padding:13px 8px;font-size:16px;}
   .matrix tbody td.col-name{padding-left:28px;font-size:18px;min-width:130px;}
   .matrix tbody td.col-total{padding-right:28px;font-size:22px;min-width:70px;}
@@ -763,6 +763,7 @@ let MODE = 'solo';       // 'solo' | 'create' | 'join'
 let ROOM_CODE = null;
 let ws = null;
 let wsReconnectTimer = null;
+let saveTimer = null;
 let pendingScan = null;  // { pi, score }
 
 // ── Persistence ──────────────────────────────────────────────────────────────
@@ -1175,12 +1176,26 @@ function renderWinnerBar(ri) {
     const btn = document.createElement('button');
     btn.className = 'wchip' + (selected === pi ? ' selected' : '');
     btn.textContent = name;
-    btn.onclick = () => { S.winners[ri] = (S.winners[ri] === pi ? null : pi); renderWinnerBar(ri); refreshButtons(); };
+    btn.onclick = () => { S.winners[ri] = (S.winners[ri] === pi ? null : pi); renderWinnerBar(ri); refreshButtons(); save(); };
     chips.appendChild(btn);
   });
 }
 
-function onInput() { const ri = activeRound(); updateTotals(ri); refreshButtons(); }
+function onInput(evt) {
+  const ri = activeRound();
+  // Sync current input value into S immediately for real-time sharing
+  if (evt && evt.target) {
+    const pi = parseInt(evt.target.id.replace('mi-', ''));
+    if (!isNaN(pi) && S.scores[pi]) {
+      S.scores[pi][ri] = getInputVal(pi);
+    }
+  }
+  updateTotals(ri);
+  refreshButtons();
+  // Debounce save so rapid typing doesn't flood the server
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(save, 400);
+}
 
 function updateTotals(ri) {
   S.players.forEach((_, pi) => {
