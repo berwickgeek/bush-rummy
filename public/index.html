@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Bush Rummy">
 <title>Bush Rummy</title>
+<base href="/bushrummy/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Cormorant+SC:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -797,7 +798,8 @@ function connectWS(code) {
   clearTimeout(wsReconnectTimer);
 
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  ws = new WebSocket(`${proto}//${location.host}/ws?code=${code}`);
+  const basePath = new URL(document.baseURI).pathname;
+  ws = new WebSocket(`${proto}//${location.host}${basePath}ws?code=${code}`);
 
   const dot = document.getElementById('conn-dot');
 
@@ -963,7 +965,7 @@ async function createRoom() {
   btn.disabled = true;
   btn.textContent = 'Creating…';
   try {
-    const resp = await fetch('/api/games', {
+    const resp = await fetch('api/games', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ state: S })
@@ -994,7 +996,7 @@ async function joinRoom() {
   btn.textContent = 'Joining…';
 
   try {
-    const resp = await fetch(`/api/games/${code}`);
+    const resp = await fetch(`api/games/${code}`);
     if (!resp.ok) throw new Error('Room not found — check the code');
     const state = await resp.json();
 
@@ -1263,7 +1265,7 @@ async function saveResultToServer(totals) {
       winner: totals[0].name,
       rounds: 13,
     };
-    await fetch('/api/results', {
+    await fetch('api/results', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(result),
@@ -1307,7 +1309,7 @@ async function scanCard(file, pi) {
     formData.append('image', file);
     formData.append('round', ri);
 
-    const resp = await fetch('/api/scan', { method: 'POST', body: formData });
+    const resp = await fetch('api/scan', { method: 'POST', body: formData });
     const result = await resp.json();
 
     document.getElementById('scan-overlay').classList.remove('show');
